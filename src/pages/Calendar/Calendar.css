@@ -245,3 +245,79 @@ ion-tab-button.tab-selected ion-icon {
   align-items: center;
   justify-content: center;
 }
+
+/* Transaction Summary */
+.transaction-summary {
+  background: white;
+  border-radius: 16px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.summary-header {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--ion-text-color);
+}
+
+.summary-amounts {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgb(77, 76, 76);
+}
+
+.summary-row:last-child {
+  border-bottom: none;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  justify-content: space-around;
+  margin: 1.5rem 0;
+}
+
+.action-button {
+  --border-radius: 8px;
+  --padding-top: 1rem;
+  --padding-bottom: 1rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0.5px;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+  .action-buttons {
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .dark .transaction-summary {
+    background: transparent;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  }
+  
+  .dark .summary-row {
+    border-color: var(--ion-color-step-300);
+  }
+  
+  .dark .summary-row:last-child {
+    border-color: var(--ion-color-step-300);
+    border-bottom: 1px solid rgb(77, 76, 76);
+  }
+}

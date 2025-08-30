@@ -3,9 +3,9 @@ import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButton, IonInp
 import { useHistory } from 'react-router-dom';
 import { chevronBack } from 'ionicons/icons';
 import { useTheme } from '../../contexts/ThemeContext';
-import './AddInfo.css';
+import './AddTransact.css';
 
-export default function AddInfo() {
+export default function AddTransact() {
   const history = useHistory();
   const [amount, setAmount] = useState('');
   const [type, setType] = useState('deposit');

@@ -44,6 +44,7 @@ interface CalendarState {
 }
 
 const CalendarPage: React.FC = () => {
+  const history = useHistory();
   const [calendarState, setCalendarState] = useState<CalendarState>(() => {
     const savedState = localStorage.getItem('calendarState');
     if (savedState) {
@@ -66,6 +67,11 @@ const CalendarPage: React.FC = () => {
 
   const { currentDate, viewMode, selectedDate, weekStart } = calendarState;
   const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
+  const [selectedDayData, setSelectedDayData] = useState<{
+    date: string;
+    deposits: number;
+    withdrawals: number;
+  } | null>(null);
 
   // Handle day click
   const handleDayClick = useCallback((date: string): void => {
@@ -73,6 +79,15 @@ const CalendarPage: React.FC = () => {
       ...prev,
       selectedDate: date
     }));
+    
+    // In a real app, you would fetch this data from your database
+    // For now, we'll use mock data
+    const mockData = {
+      date: date,
+      deposits: Math.floor(Math.random() * 1000), // Replace with actual data
+      withdrawals: Math.floor(Math.random() * 500) // Replace with actual data
+    };
+    setSelectedDayData(mockData);
   }, []);
 
   // Function to render day cell
@@ -398,17 +413,68 @@ const CalendarPage: React.FC = () => {
           {/* Display Calendar */}
           {viewMode === 'month' ? renderCalendarGrid() : renderWeekView()}
         </div>
-
-        {/* Add Transaction Button */}
+        {/* Jump To Today Button */}
         <div className="today-button">
+          <IonButton 
+            expand="block" 
+            onClick={handleToday}
+            className="add-transaction-btn"
+            fill="clear"
+          >
+            Jump To Today
+          </IonButton>
+        </div>
+
+        {/* Transaction Summary */}
+        <div className="transaction-summary">
+          <div className="summary-header">
+            {selectedDayData ? format(new Date(selectedDayData.date), 'EE, MMM dd') : 'No date selected'}
+          </div>
+          <div className="summary-row">
+            <span>Deposits</span>
+            <span>${selectedDayData?.deposits?.toFixed(2) || '0.00'}</span>
+          </div>
+          <div className="summary-row">
+            <span>Withdrawals</span>
+            <span>${selectedDayData?.withdrawals?.toFixed(2) || '0.00'}</span>
+          </div>
+          <div className="summary-row">
+            <span>Overall Total</span>
+            <span>${selectedDayData ? (selectedDayData.deposits - selectedDayData.withdrawals).toFixed(2) : '0.00'}</span>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="action-buttons">
+          {selectedDayData && (selectedDayData.deposits || selectedDayData.withdrawals) ? (
+            <>
+              <IonButton 
+                expand="block" 
+                onClick={() => history.push('/add-transact')}
+                className="action-button"
+              >
+                Add Transact.
+              </IonButton>
+              <IonButton 
+                expand="block" 
+                onClick={() => history.push(`/edit-overall/${selectedDayData?.date}`)}
+                className="action-button"
+                fill="outline"
+              >
+                Edit Overall
+              </IonButton>
+            </>
+          ) : (
             <IonButton 
               expand="block" 
-              onClick={handleToday}
-              className="add-transaction-btn"
+              onClick={() => history.push('/add-transact')}
+              className="action-button"
             >
-              Jump To Today
+              Add Transaction
             </IonButton>
-          </div>
+          )}
+        </div>
+        
       </IonContent>
     </IonPage>
   );
