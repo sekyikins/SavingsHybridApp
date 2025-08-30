@@ -12,8 +12,8 @@ import {
 } from '@ionic/react';
 import { 
   chevronBack, 
-  chevronForward, 
-  addOutline
+  chevronForward,
+  calendarOutline
 } from 'ionicons/icons';
 import { 
   startOfWeek, 
@@ -22,7 +22,8 @@ import {
   isSameMonth, 
   getDaysInMonth, 
   isToday as isTodayDate, 
-  isWeekend as isWeekendDate 
+  isWeekend as isWeekendDate,
+  parseISO
 } from 'date-fns';
 import './Calendar.css';
 
@@ -43,7 +44,6 @@ interface CalendarState {
 }
 
 const CalendarPage: React.FC = () => {
-  const router = useHistory();
   const [calendarState, setCalendarState] = useState<CalendarState>(() => {
     const savedState = localStorage.getItem('calendarState');
     if (savedState) {
@@ -76,15 +76,17 @@ const CalendarPage: React.FC = () => {
   }, []);
 
   // Function to render day cell
-  const renderDayCell = useCallback((day: CalendarDay) => {
+  const renderDayCell = useCallback((day: CalendarDay, index: number) => {
     const date = new Date(day.date);
     const dayNumber = date.getDate();
     const hasInfo = day.deposit || day.withdrawal;
 
     return (
       <div
-        key={day.date}
-        className={`day-cell ${day.date === selectedDate ? 'selected' : ''}`}
+        key={`${day.date}-${index}`}
+        className={`day-cell ${day.isCurrentMonth ? '' : 'other-month'} ${
+          day.date === selectedDate ? 'selected' : ''
+        } ${isToday(parseISO(day.date)) ? 'today' : ''}`}
         onClick={() => handleDayClick(day.date)}
       >
         <div className="day-number">
@@ -98,12 +100,19 @@ const CalendarPage: React.FC = () => {
 
   // Toggle between month and week view
   const toggleViewMode = useCallback((): void => {
-    setCalendarState(prev => ({
-      ...prev,
-      viewMode: prev.viewMode === 'month' ? 'week' : 'month',
-      weekStart: startOfWeek(currentDate, { weekStartsOn: 1 })
-    }));
-  }, [currentDate]);
+    setCalendarState(prev => {
+      const newViewMode = prev.viewMode === 'month' ? 'week' : 'month';
+      const selectedDateObj = new Date(prev.selectedDate);
+      
+      return {
+        ...prev,
+        viewMode: newViewMode,
+        weekStart: newViewMode === 'week' 
+          ? startOfWeek(selectedDateObj, { weekStartsOn: 1 })
+          : startOfWeek(prev.currentDate, { weekStartsOn: 1 })
+      };
+    });
+  }, []);
 
   // Get week title for week view
   const getWeekTitle = useCallback((): string => {
@@ -129,17 +138,6 @@ const CalendarPage: React.FC = () => {
       };
     });
   }, []);
-
-  const toggleViewMode = useCallback(() => {
-    const newViewMode = viewMode === 'month' ? 'week' : 'month';
-    setCalendarState(prev => ({
-      ...prev,
-      viewMode: newViewMode,
-      weekStart: newViewMode === 'week' 
-        ? startOfWeek(currentDate, { weekStartsOn: 1 })
-        : prev.weekStart
-    }));
-  }, [viewMode, currentDate]);
 
   // Generate calendar days
   useEffect(() => {
@@ -187,18 +185,35 @@ const CalendarPage: React.FC = () => {
     }));
   }, [currentDate, viewMode, selectedDate, weekStart]);
 
-  // Handle day click
-  const handleDayClick = useCallback((date: string): void => {
+  // Handle jump to today
+  const handleToday = useCallback(() => {
+    const today = new Date();
     setCalendarState(prev => ({
       ...prev,
-      selectedDate: date
+      currentDate: today,
+      selectedDate: format(today, 'yyyy-MM-dd'),
+      weekStart: startOfWeek(today, { weekStartsOn: 1 })
     }));
   }, []);
 
-  // Handle add transaction
-  const handleAddTransaction = React.useCallback(() => {
-    router.push(`/add-transaction?date=${selectedDate}`);
-  }, [router, selectedDate]);
+  // Set today as selected date on initial load
+  useEffect(() => {
+    const today = new Date();
+    setCalendarState(prev => ({
+      ...prev,
+      selectedDate: format(today, 'yyyy-MM-dd')
+    }));
+  }, []);
+
+  // Check if a date is today
+  const isToday = (date: Date): boolean => {
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
 
   // Generate calendar grid for month view
   const renderCalendarGrid = React.useCallback((): JSX.Element | null => {
@@ -227,7 +242,7 @@ const CalendarPage: React.FC = () => {
       days.push(
         <div
           key={dateStr}
-          className={`day-cell ${isSelected ? 'selected' : ''} ${isWeekend ? 'weekend' : ''}`}
+          className={`day-cell ${isSelected ? 'selected' : ''} ${isWeekend ? 'weekend' : ''} ${isToday ? 'today' : ''}`}
           onClick={() => handleDayClick(dateStr)}
         >
           <div className="day-number">
@@ -247,12 +262,36 @@ const CalendarPage: React.FC = () => {
 
   // Generate week view
   const renderWeekView = React.useCallback((): JSX.Element => {
+    const days = [];
+    const weekStartDate = startOfWeek(weekStart, { weekStartsOn: 1 });
+    
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(weekStartDate, i);
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const isSelected = dateStr === selectedDate;
+      const isToday = isTodayDate(day);
+      const isWeekend = isWeekendDate(day);
+      
+      days.push(
+        <div
+          key={dateStr}
+          className={`day-cell ${isSelected ? 'selected' : ''} ${isWeekend ? 'weekend' : ''} ${isToday ? 'today' : ''}`}
+          onClick={() => handleDayClick(dateStr)}
+        >
+          <div className="day-number">
+            {isToday && <div className="today-dot"></div>}
+            {day.getDate()}
+          </div>
+        </div>
+      );
+    }
+    
     return (
-      <div className="week-view">
-        {calendarDays.map(renderDayCell)}
+      <div className="days-grid">
+        {days}
       </div>
     );
-  }, [calendarDays, renderDayCell]);
+  }, [weekStart, selectedDate, handleDayClick]);
 
   // Generate calendar days based on current view mode
   React.useEffect(() => {
@@ -305,71 +344,71 @@ const CalendarPage: React.FC = () => {
     }));
   }, [currentDate, viewMode, selectedDate, weekStart]);
 
-  // Handle add transaction
-  const handleAddTransaction = useCallback(() => {
-    router.push(`/add-transaction?date=${selectedDate}`);
-  }, [router, selectedDate]);
-
   // Render the component
   return (
     <IonPage className="calendar-page">
+      {/* First Header */}
       <IonHeader className="ion-no-border">
         <IonToolbar>
           <IonTitle className="ion-text-center">
-            {viewMode === 'month'
-              ? format(currentDate, 'MMMM yyyy')
-              : getWeekTitle()}
+            Calendar
           </IonTitle>
           <IonButtons slot="end">
             <IonButton onClick={toggleViewMode} fill="clear">
-              {viewMode === 'month' ? 'Week' : 'Month'}
+              <IonIcon slot="icon-only" icon={calendarOutline} />
             </IonButton>
           </IonButtons>
         </IonToolbar>
       </IonHeader>
+
+      {/* Second Header */}
+      <IonHeader className="calendar-header">
+        <IonToolbar>
+          <IonButtons slot="start">
+            <IonButton fill="clear" onClick={() => navigatePeriod('prev')}>
+              <IonIcon slot="start" icon={chevronBack} />
+              Prev.
+            </IonButton>
+          </IonButtons>
+
+          <IonTitle className="ion-text-center">
+            {viewMode === 'month' 
+              ? format(currentDate, 'MMMM yyyy')
+              : getWeekTitle()
+            }
+          </IonTitle>
+
+          <IonButtons slot="end">
+            <IonButton fill="clear" onClick={() => navigatePeriod('next')}>
+              Next
+              <IonIcon slot="end" icon={chevronForward} />
+            </IonButton>
+          </IonButtons>
+        </IonToolbar>
+      </IonHeader>
+
       <IonContent>
         <div className="calendar-container">
-          <div className="calendar-header">
-            <IonButton 
-              fill="clear" 
-              onClick={() => navigatePeriod('prev')}
-            >
-              <IonIcon icon={chevronBack} />
-            </IonButton>
-            
-            <h2>
-              {viewMode === 'month' 
-                ? format(currentDate, 'MMMM yyyy') 
-                : getWeekTitle()}
-            </h2>
-            
-            <IonButton 
-              fill="clear" 
-              onClick={() => navigatePeriod('next')}
-            >
-              <IonIcon icon={chevronForward} />
-            </IonButton>
-          </div>
-          
-          <div className="days-of-week">
+          {/* Days of Week */}
+          <div className="days-header">
             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
               <div key={day} className="day-header">{day}</div>
             ))}
           </div>
-          
+          {/* Display Calendar */}
           {viewMode === 'month' ? renderCalendarGrid() : renderWeekView()}
-          
-          <div className="transactions-actions">
+        </div>
+
+        {/* Add Transaction Button */}
+        <div className="today-button">
             <IonButton 
               expand="block" 
-              onClick={handleAddTransaction}
+              onClick={handleToday}
               className="add-transaction-btn"
             >
-              <IonIcon icon={addOutline} slot="start" />
-              Add Transaction
+              Jump To Today
             </IonButton>
           </div>
-        </div>
       </IonContent>
     </IonPage>
   );

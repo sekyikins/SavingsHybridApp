@@ -3,7 +3,7 @@
 /* ===== Base Calendar Container ===== */
 .calendar-container {
   max-width: 640px;
-  margin: 0;
+  margin-bottom: 24px;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -87,7 +87,7 @@
 .day-number {
   font-size: 1rem;
   font-weight: 500;
-  color: var(--ion-text-color);
+  color: white; /* Force white text for all date numbers */
   position: relative;
   z-index: 1;
   display: flex;
@@ -98,6 +98,26 @@
 }
 
 /* ===== Today's Date ===== */
+.day-cell.today .day-number {
+  color: var(--ion-color-primary);
+  font-weight: bold;
+}
+
+/* Selected date */
+.day-cell.selected {
+  border: 2px solid var(--ion-color-primary);
+  background-color: rgba(var(--ion-color-primary-rgb), 0.1) !important;
+}
+
+.day-cell.selected .day-number {
+  font-weight: bold;
+}
+
+/* Hover effect for day cells */
+.day-cell:not(.empty):not(.selected):hover {
+  background-color: rgba(var(--ion-color-primary-rgb), 0.05);
+  border-color: var(--ion-color-primary);
+}
 .today-dot {
   position: absolute;
   width: 24px;
@@ -192,4 +212,36 @@
 /* ===== Smooth Transitions ===== */
 * {
   transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.today-button {
+  display: flex;
+  justify-content: center;
+  margin: 1rem;
+}
+
+/* Fix for bottom bar active icons */
+ion-tab-button.tab-selected ion-icon {
+  color: var(--ion-color-primary) !important;
+}
+
+/* Center the Calendar title in the header */
+.calendar-page ion-toolbar {
+  --padding-start: 0;
+  --padding-end: 0;
+}
+
+.calendar-page ion-title {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 100%;
+  text-align: center;
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
