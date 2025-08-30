@@ -1,0 +1,184 @@
+.auth-container {
+  --ion-background-color: #f8f9fa;
+}
+
+.auth-content {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 2rem;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.auth-title {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.auth-form {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.auth-input-item {
+  --background: transparent;
+  --padding-start: 0;
+  --inner-padding-end: 0;
+  margin-bottom: 1.5rem;
+}
+
+.auth-input-item ion-label {
+  color: #2d3748;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.auth-input-item ion-input {
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--ion-color-medium);
+}
+
+.auth-button {
+  --background: #4f46e5;
+  --background-activated: #4338ca;
+  --border-radius: 8px;
+  margin-top: 1rem;
+  height: 48px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.auth-button:disabled {
+  opacity: 0.8;
+}
+
+.auth-links {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.auth-link {
+  color: #4f46e5;
+  background: none;
+  border: none;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
+
+/* Add error message styles */
+.error-message {
+  color: #e53e3e;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  margin-left: 0.5rem;
+}
+
+.auth-input-item.invalid {
+  --border-color: #e53e3e;
+}
+
+.password-strength {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.strength-bar {
+  height: 4px;
+  flex-grow: 1;
+  background: #e2e8f0;
+  border-radius: 2px;
+}
+
+.strength-bar.filled {
+  background: #38a169;
+}
+
+/* Social login styles */
+.social-login {
+  margin-top: 2rem;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 1.5rem 0;
+  color: #718096;
+  font-size: 0.875rem;
+}
+
+.divider::before, .divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+  margin: 0 1rem;
+}
+
+.social-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.social-button {
+  flex: 1;
+  --border-color: #e2e8f0;
+  --color: #2d3748;
+  --background-hover: #f7fafc;
+}
+
+/* Loading animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Button loading state */
+.button-loading {
+  position: relative;
+  pointer-events: none;
+}
+
+.button-loading::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: auto;
+  border: 3px solid transparent;
+  border-top-color: white;
+  border-radius: 50%;
+  animation: button-loading-spinner 1s ease infinite;
+}
+
+@keyframes button-loading-spinner {
+  from { transform: rotate(0turn); }
+  to { transform: rotate(1turn); }
+}
+
+/* Signup link visibility */
+.signup-toggle {
+  display: block;
+  text-align: center;
+  margin-top: 1.5rem;
+}

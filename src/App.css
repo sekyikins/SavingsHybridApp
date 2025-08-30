@@ -1,0 +1,64 @@
+/* Tab Bar Styling */
+.tab-bar {
+  --background: var(--ion-background-color, #ffffff);
+  --border: none;
+  --color: var(--ion-color-medium, #92949c);
+  --color-selected: var(--ion-color-primary, #3880ff);
+  padding: 4px 0;
+  height: 60px;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Tab button styling */
+.tab-bar ion-tab-button {
+  --color: var(--ion-color-medium, #92949c);
+  --color-selected: var(--ion-color-primary, #3880ff);
+  --padding-bottom: 4px;
+  --padding-top: 4px;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+/* Active tab styling */
+.tab-bar ion-tab-button.tab-active {
+  --color: var(--ion-color-primary, #3880ff);
+}
+
+/* Icon styling */
+.tab-bar ion-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+  transition: all 0.2s ease;
+}
+
+/* Label styling */
+.tab-bar ion-label {
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 2px;
+  transition: all 0.2s ease;
+}
+
+/* Active state for icon and label */
+.tab-bar ion-tab-button.tab-active .tab-icon-active,
+.tab-bar ion-tab-button.tab-active .tab-label-active {
+  color: var(--ion-color-primary, #3880ff);
+}
+
+/* Inactive state for icon and label */
+.tab-bar ion-tab-button:not(.tab-active) .tab-icon,
+.tab-bar ion-tab-button:not(.tab-active) .tab-label {
+  color: var(--ion-color-medium, #92949c);
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .tab-bar {
+    --background: var(--ion-background-color, #1a1a1a);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+  }
+  
+  .tab-bar ion-tab-button {
+    --color: var(--ion-color-medium, #757575);
+  }
+}

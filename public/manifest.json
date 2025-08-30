@@ -1,0 +1,42 @@
+{
+  "short_name": "Savings Tracker",
+  "name": "Daily Savings Tracker",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#1976d2",
+  "background_color": "#ffffff",
+  "orientation": "portrait",
+  "description": "Track your daily savings and reach your financial goals",
+  "scope": "/",
+  "shortcuts": [
+    {
+      "name": "Add Today's Savings",
+      "short_name": "Add Savings",
+      "description": "Add today's savings amount",
+      "url": "/home"
+    },
+    {
+      "name": "View Calendar",
+      "short_name": "Calendar",
+      "description": "View your savings calendar",
+      "url": "/calendar"
+    }
+  ]
+}

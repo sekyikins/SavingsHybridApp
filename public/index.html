@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Daily Savings Tracker - Track your daily savings in Cedis" />
+    <title>Daily Savings Tracker</title>
+    <link rel="icon" type="image/png" href="/9280956.png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/9280956.png" />
+    <link rel="shortcut icon" href="/9280956.png" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .calendar-day {
+        transition: all 0.2s ease;
+      }
+      .calendar-day:hover {
+        transform: scale(1.05);
+      }
+      .loading {
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

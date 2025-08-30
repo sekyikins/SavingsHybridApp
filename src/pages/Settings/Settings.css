@@ -1,0 +1,372 @@
+/* Settings container */
+.settings-container {
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--ion-background-color);
+  min-height: 100%;
+  padding: 16px;
+}
+
+/* Settings Group */
+.settings-group {
+  margin-bottom: 24px;
+  background: var(--ion-card-background);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--ion-color-step-100, #f0f0f0);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.settings-group:active {
+  transform: translateY(1px);
+}
+
+:root.dark .settings-group {
+  border-color: var(--ion-color-step-800, #333);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+.settings-group-header {
+  --background: var(--ion-color-primary);
+  --color: white;
+  margin: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ion-color-primary-shade);
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+}
+
+.settings-group-header ion-icon {
+  margin-right: 12px;
+  font-size: 1.2rem;
+}
+
+.settings-group-header ion-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  opacity: 0.95;
+  margin: 0;
+}
+
+/* Danger text style */
+.danger-text {
+  color: var(--ion-color-danger);
+}
+
+/* Danger icon style */
+.setting-item ion-icon[color="danger"] {
+  color: var(--ion-color-danger);
+}
+
+.settings-group-content {
+  background: var(--ion-item-background);
+  padding: 4px 0;
+}
+
+/* Rounded corners for first and last items */
+.settings-group-content ion-item:first-child {
+  --border-radius: 0;
+}
+
+.settings-group-content ion-item:last-child {
+  --border-radius: 0 0 8px 8px;
+  --border-width: 0;
+}
+
+/* Hover and active states for better interactivity */
+.settings-group-content ion-item {
+  --transition: background-color 0.2s ease;
+  --border-color: var(--ion-color-step-100, #f0f0f0);
+}
+
+:root.dark .settings-group-content ion-item {
+  --border-color: var(--ion-color-step-800, #333);
+}
+
+.settings-group-content ion-item:hover {
+  --background: var(--ion-color-step-50, #f9f9f9);
+}
+
+:root.dark .settings-group-content ion-item:hover {
+  --background: var(--ion-color-step-850, #2a2a2a);
+}
+
+/* Ensure proper theming for dark mode */
+:root.dark .settings-section,
+:root.dark .setting-item {
+  --background: var(--ion-background-color);
+  --color: var(--ion-text-color);
+  --border-color: var(--ion-color-step-200, #333);
+}
+
+/* Toast theming */
+.theme-toast {
+  --background: var(--ion-color-primary);
+  --color: var(--ion-color-primary-contrast);
+  --border-radius: 8px;
+  --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+:root.dark .theme-toast {
+  --background: var(--ion-color-step-800);
+  --color: #fff;
+}
+
+/* Section styling - Keeping these for backward compatibility */
+.settings-section {
+  margin-bottom: 24px;
+  background: var(--ion-card-background);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--ion-color-step-100, #f0f0f0);
+}
+
+:root.dark .settings-section {
+  border-color: var(--ion-color-step-800, #333);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+.settings-section-header {
+  padding: 14px 16px;
+  background: var(--ion-color-primary);
+  border-bottom: 1px solid var(--ion-color-primary-shade);
+}
+
+.settings-section-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: white;
+  text-transform: uppercase;
+  opacity: 0.95;
+}
+
+.settings-section-content {
+  padding: 0;
+  background: var(--ion-item-background);
+}
+
+/* Setting item styles */
+.setting-item {
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --min-height: 56px;
+  --border-color: var(--ion-color-step-100, #f0f0f0);
+  --background: var(--ion-item-background);
+  --background-hover: var(--ion-color-step-50, #f9f9f9);
+  --background-activated: var(--ion-color-step-100, #f0f0f0);
+  --transition: all 0.2s ease;
+  --border-width: 0 0 1px 0;
+  --border-style: solid;
+  --inner-padding-end: 8px;
+}
+
+:root.dark .setting-item {
+  --border-color: var(--ion-color-step-800, #333);
+  --background-hover: var(--ion-color-step-850, #2a2a2a);
+  --background-activated: var(--ion-color-step-800, #333);
+}
+
+/* Style for items with detail arrow */
+.setting-item[detail] {
+  --padding-end: 16px;
+}
+
+/* Style for toggle items */
+.setting-item ion-toggle {
+  --background: var(--ion-color-step-200, #e0e0e0);
+  --background-checked: var(--ion-color-primary);
+  --handle-background: white;
+  --handle-background-checked: white;
+  height: 22px;
+  width: 40px;
+  padding: 2px;
+}
+
+:root.dark .setting-item ion-toggle {
+  --background: var(--ion-color-step-700, #444);
+}
+
+/* Style for icons in settings */
+.setting-item ion-icon[slot="start"] {
+  margin-right: 16px;
+  font-size: 1.2rem;
+  color: var(--ion-color-primary);
+}
+
+/* Danger zone items */
+.setting-item[color="danger"] {
+  --color: var(--ion-color-danger);
+}
+
+.setting-item[color="danger"] ion-icon[slot="start"] {
+  color: var(--ion-color-danger);
+}
+
+.setting-item:last-child {
+  --border-style: none;
+}
+
+.setting-item ion-label {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--ion-text-color);
+}
+
+.setting-item ion-note {
+  font-size: 0.875rem;
+  color: var(--ion-color-medium);
+  display: block;
+  margin-top: 4px;
+}
+
+/* Toggle styles */
+.setting-item ion-toggle {
+  --background: var(--ion-color-step-300, #d1d1d6);
+  --background-checked: var(--ion-color-primary);
+  --handle-background: #ffffff;
+  --handle-background-checked: #ffffff;
+  --handle-box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  padding: 8px 0;
+  transition: background-color 0.3s ease;
+}
+
+:root.dark .setting-item ion-toggle {
+  --background: var(--ion-color-step-600);
+  --background-checked: var(--ion-color-primary);
+}
+
+/* Profile section */
+.profile-header {
+  text-align: center;
+  padding: 24px 0;
+  margin: 0 0 24px 0;
+  background: var(--ion-card-background);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--ion-color-step-100, #f0f0f0);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+:root.dark .profile-header {
+  border-color: var(--ion-color-step-800, #333);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ion-color-primary), var(--ion-color-secondary));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(var(--ion-color-primary-rgb), 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.profile-avatar:active {
+  transform: scale(0.98);
+}
+
+.profile-name {
+  margin: 8px 0 4px;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--ion-text-color);
+  transition: color 0.2s ease;
+}
+
+.profile-email {
+  margin: 0;
+  color: var(--ion-color-medium);
+  font-size: 0.95rem;
+  transition: color 0.2s ease;
+}
+
+/* App version */
+.app-version {
+  text-align: center;
+  padding: 16px 0;
+  color: var(--ion-color-medium);
+  font-size: 0.85rem;
+  margin-top: 16px;
+  opacity: 0.8;
+}
+
+/* Animation for theme toggle */
+@keyframes fadeIn {
+  from { opacity: 0.6; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.settings-group {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .settings-container {
+    padding: 8px;
+  }
+  
+  .profile-header {
+    padding: 16px 0;
+    margin-bottom: 16px;
+  }
+  
+  .profile-avatar {
+    width: 64px;
+    height: 64px;
+    font-size: 1.5rem;
+  }
+  
+  .profile-name {
+    font-size: 1.2rem;
+  }
+  
+  .profile-email {
+    font-size: 0.9rem;
+  }
+  
+  .settings-group-header ion-label {
+    font-size: 0.8rem;
+  }
+  
+  .setting-item {
+    --min-height: 52px;
+    --padding-start: 12px;
+    --padding-end: 12px;
+  }
+  
+  .setting-item ion-icon[slot="start"] {
+    margin-right: 12px;
+    font-size: 1.1rem;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .settings-section {
+    background: var(--ion-color-step-50);
+  }
+  
+  .settings-section-header {
+    background: var(--ion-color-step-100);
+  }
+  
+  .setting-item {
+    --background: var(--ion-color-step-50);
+    --border-color: var(--ion-color-step-200);
+  }
+}
