@@ -28,7 +28,7 @@ import {
   documentText,
   cog,
   warning,
-  informationCircle
+  informationCircle,
 } from 'ionicons/icons';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -351,14 +351,24 @@ const SettingsPage: React.FC = () => {
                   <IonNote>Get help with the app</IonNote>
                 </IonLabel>
               </IonItem>
-              <IonItem button detail={true} className="setting-item">
+              <IonItem 
+                button 
+                detail={true} 
+                className="setting-item"
+                onClick={() => history.push('/privacy-policy')}
+              >
                 <IonIcon icon={shieldCheckmark} color="primary" slot="start" />
                 <IonLabel>
                   <h3>Privacy Policy</h3>
                   <IonNote>Read our privacy policy</IonNote>
                 </IonLabel>
               </IonItem>
-              <IonItem button detail={true} className="setting-item">
+              <IonItem 
+                button 
+                detail={true} 
+                className="setting-item"
+                onClick={() => history.push('/terms-of-service')}
+              >
                 <IonIcon icon={documentText} color="primary" slot="start" />
                 <IonLabel>
                   <h3>Terms of Service</h3>
@@ -371,8 +381,8 @@ const SettingsPage: React.FC = () => {
           {/* Danger Zone */}
           <SettingsGroup title="Danger Zone" icon={warning}>
             <IonList className="settings-section-content">
-              <IonItem 
-                button 
+              <IonItem
+                button
                 className="setting-item"
                 onClick={handleSignOut}
                 detail={true}
@@ -383,8 +393,8 @@ const SettingsPage: React.FC = () => {
                   <IonNote>Sign out of your account</IonNote>
                 </IonLabel>
               </IonItem>
-              <IonItem 
-                button 
+              <IonItem
+                button
                 className="setting-item"
                 onClick={handleDeleteAccount}
                 detail={true}

@@ -40,6 +40,10 @@ import SettingsPage from './pages/Settings';
 import AuthPage from './pages/Auth';
 import EditOverall from './pages/EditOverall';
 import AddTransact from './pages/AddTransact';
+import MonthlyProgress from './pages/Progress/MonthlyProgress';
+import WeeklyProgress from './pages/Progress/WeeklyProgress';
+import PrivacyPolicy from './pages/Legal/PrivacyPolicy';
+import TermsOfService from './pages/Legal/TermsOfService';
 
 // Initialize Ionic
 setupIonicReact({
@@ -121,7 +125,12 @@ const AppRoutes: React.FC = () => {
       <IonRouterOutlet>
         <Route exact path="/home" component={Home} />
         <Route exact path="/calendar" component={CalendarPage} />
-        <Route exact path="/settings" component={SettingsPage} />
+        <Route path="/settings" component={SettingsPage} />
+        <Route path="/privacy-policy" component={PrivacyPolicy} />
+        <Route path="/terms-of-service" component={TermsOfService} />
+        <Route exact path="/progress/monthly" component={MonthlyProgress} />
+        <Route exact path="/progress/weekly" component={WeeklyProgress} />
+        <Route path="/auth" component={AuthPage} />
         <Route exact path="/edit-transaction/:date" component={AddTransact} />
         <Route exact path="/edit-overall/:date" component={EditOverall} />
         <Route exact path="/">

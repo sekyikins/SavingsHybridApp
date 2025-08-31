@@ -9,16 +9,22 @@
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: 0;
 }
 
 .savings-card {
-  background: white;
+  background: var(--card-bg-light);
+  border-color: var(--card-border-light);
   border-radius: var(--rounded-xl);
   padding: var(--space-6);
   box-shadow: var(--shadow-md);
   border: 1px solid var(--gray200);
   animation: fadeIn 0.5s ease-out;
+}
+
+.dark .savings-card {
+  background: var(--card-bg-dark);
+  border-color: var(--card-border-dark);
 }
 
 @keyframes fadeIn {
@@ -74,6 +80,10 @@
   padding: var(--space-3);
 }
 
+.dark .stat-item {
+  background: var(--card-bg-dark);
+}
+
 .stat-label {
   font-size: var(--text-sm);
   color: var(--gray500);
@@ -91,6 +101,7 @@
   --padding-bottom: var(--space-4);
   font-weight: 600;
   box-shadow: var(--shadow-md);
+  margin-top: var(--space-3);
 }
 
 /* Header styles */
@@ -128,18 +139,8 @@ ion-card {
   --text-color-dark: white;
 }
 
-.savings-card {
-  background: var(--card-bg-light);
-  border-color: var(--card-border-light);
-}
-
 .card-title, .stat-value {
   color: var(--text-color-light);
-}
-
-.dark .savings-card {
-  background: var(--card-bg-dark);
-  border-color: var(--card-border-dark);
 }
 
 .dark .card-title, 
@@ -149,11 +150,27 @@ ion-card {
 
 /* Progress bar */
 .progress-bar {
-  --background: #acacac;
   --progress-background: var(--ion-color-primary);
+  --buffer-background: transparent;
+  --progress-color: var(--ion-color-primary);
   border-radius: 10px;
   height: 8px;
   margin: 20px 0 8px;
+}
+
+/* Target the inner progress bar elements */
+.progress-bar::part(progress) {
+  background: var(--progress-color, var(--ion-color-primary));
+}
+
+.progress-bar::part(track) {
+  background: #919191;
+  border-radius: 10px;
+}
+
+/* Dark mode */
+.dark .progress-bar::part(track) {
+  background: #505050;
 }
 
 /* Stats grid */

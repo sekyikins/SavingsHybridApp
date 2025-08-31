@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   IonContent, 
   IonHeader, 
@@ -7,53 +7,81 @@ import {
   IonToolbar,
   IonButton,
   IonIcon,
-  IonProgressBar
+  IonProgressBar,
+  IonCard,
+  IonCardHeader,
+  IonCardTitle,
+  IonCardContent
 } from '@ionic/react';
 import { eyeOutline } from 'ionicons/icons';
+import { useHistory } from 'react-router-dom';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, isWithinInterval, parseISO } from 'date-fns';
+import useTransactions from '../../hooks/useTransactions';
 import './Home.css';
 
-// Type definitions
-interface SavingsSummary {
-  totalSaved: number;
-  monthlyGoal: number;
-  progress: number;
-}
-
 const Home: React.FC = () => {
-  const [savings, setSavings] = useState<SavingsSummary>({
-    totalSaved: 0,
-    monthlyGoal: 1000,
-    progress: 0
-  });
-
-  const [weeklyProgress, setWeeklyProgress] = useState(0);
-
-  // Load savings data
-  useEffect(() => {
-    const fetchSavings = async () => {
-      try {
-        // Simulated data
-        setTimeout(() => {
-          setSavings({
-            totalSaved: 750,
-            monthlyGoal: 1000,
-            progress: 0.75
-          });
-        }, 500);
-      } catch (error) {
-        console.error('Error fetching savings data:', error);
-      }
+  const history = useHistory();
+  const { transactions } = useTransactions();
+  const now = new Date();
+  
+  // Calculate monthly stats
+  const monthlyStats = useMemo(() => {
+    const start = startOfMonth(now);
+    const end = endOfMonth(now);
+    
+    const monthlyTransactions = transactions.filter(tx => 
+      isWithinInterval(parseISO(tx.date), { start, end })
+    );
+    
+    const deposits = monthlyTransactions
+      .filter(tx => tx.type === 'deposit')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+      
+    const withdrawals = monthlyTransactions
+      .filter(tx => tx.type === 'withdrawal')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+      
+    const monthlyGoal = 1000; // Default goal, you might want to load this from settings
+    const progress = Math.min(deposits / monthlyGoal, 1);
+    
+    return {
+      totalSaved: deposits - withdrawals,
+      monthlyGoal,
+      progress,
+      dailyAverage: now.getDate() > 0 ? (deposits / now.getDate()) : 0
     };
-
-    fetchSavings();
-  }, []);
-
-  // Calculate weekly progress
-  useEffect(() => {
-    // Add your weekly progress calculation logic here
-    const calculatedWeeklyProgress = 65; // Example value
-    setWeeklyProgress(calculatedWeeklyProgress);
-  }, []);
+  }, [transactions, now]);
+  
+  // Calculate weekly stats
+  const weeklyStats = useMemo(() => {
+    const start = startOfWeek(now, { weekStartsOn: 1 });
+    const end = endOfWeek(now, { weekStartsOn: 1 });
+    
+    const weeklyTransactions = transactions.filter(tx => 
+      isWithinInterval(parseISO(tx.date), { start, end })
+    );
+    
+    const deposits = weeklyTransactions
+      .filter(tx => tx.type === 'deposit')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+      
+    const withdrawals = weeklyTransactions
+      .filter(tx => tx.type === 'withdrawal')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+      
+    const weeklyGoal = 250; // Default weekly goal (1/4 of monthly)
+    const progress = Math.min(deposits / weeklyGoal, 1);
+    
+    return {
+      totalSaved: deposits - withdrawals,
+      weeklyGoal,
+      progress,
+      daysPassed: Math.min(
+        Math.ceil((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)),
+        7
+      )
+    };
+  }, [transactions, now]);
 
   return (
     <IonPage>
@@ -65,76 +93,89 @@ const Home: React.FC = () => {
       
       <IonContent fullscreen className="ion-padding">
         <div className="dashboard-container">
-          
-          {/* Savings Card - Monthly Progress*/}
-          <div className="savings-card">
-            <h3 className="card-title">Monthly Progress</h3>
-            
-            <div className="amount-display">
-              <span className="current-amount">${savings.totalSaved.toFixed(2)}</span>
-              <span className="goal-amount"> / ${savings.monthlyGoal}</span>
-            </div>
-            
-            <IonProgressBar 
-              value={savings.progress} 
-              className="progress-bar"
-            />
-            
-            <div className="progress-text">
-              {Math.round(savings.progress * 100)}% of monthly goal
-            </div>
-            
-            <div className="stats-grid">
-              <div className="stat-item">
-                <div className="stat-label">Daily Average</div>
-                <div className="stat-value">
-                  ${(savings.totalSaved / new Date().getDate()).toFixed(2)}
-                </div>
+          {/* Monthly Progress Card */}
+          <IonCard 
+            className="savings-card" 
+            button 
+            onClick={() => history.push('/progress/monthly')}
+          >
+            <IonCardHeader>
+              <IonCardTitle className="card-title">Monthly Progress</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+              <div className="amount-display">
+                <span className="current-amount">${monthlyStats.totalSaved.toFixed(2)}</span>
+                <span className="goal-amount"> / ${monthlyStats.monthlyGoal}</span>
               </div>
               
-              <div className="stat-item">
-                <div className="stat-label">Remaining</div>
-                <div className="stat-value">
-                  ${(savings.monthlyGoal - savings.totalSaved).toFixed(2)}
+              <IonProgressBar 
+                value={monthlyStats.progress} 
+                className="progress-bar"
+              />
+              
+              <div className="progress-text">
+                {Math.round(monthlyStats.progress * 100)}% of monthly goal
+              </div>
+              
+              <div className="stats-grid">
+                <div className="stat-item">
+                  <div className="stat-label">Daily Average</div>
+                  <div className="stat-value">
+                    ${monthlyStats.dailyAverage.toFixed(2)}
+                  </div>
+                </div>
+                
+                <div className="stat-item">
+                  <div className="stat-label">Remaining</div>
+                  <div className="stat-value">
+                    ${(monthlyStats.monthlyGoal - monthlyStats.totalSaved).toFixed(2)}
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </IonCardContent>
+          </IonCard>
 
-          {/* Weekly Progress */}
-          <div className="savings-card">
-            <h3 className="card-title">Weekly Progress</h3>
-            
-            <div className="amount-display">
-              <span className="current-amount">${savings.totalSaved.toFixed(2)}</span>
-              <span className="goal-amount"> / ${savings.monthlyGoal}</span>
-            </div>
-            
-            <IonProgressBar 
-              value={weeklyProgress/100} 
-              className="progress-bar"
-            />
-            
-            <div className="progress-text">
-              {Math.round(weeklyProgress)}% of weekly goal
-            </div>
-            
-            <div className="stats-grid">
-              <div className="stat-item">
-                <div className="stat-label">Daily Average</div>
-                <div className="stat-value">
-                  ${(savings.totalSaved / new Date().getDate()).toFixed(2)}
-                </div>
+          {/* Weekly Progress Card */}
+          <IonCard 
+            className="savings-card" 
+            button 
+            onClick={() => history.push('/progress/weekly')}
+          >
+            <IonCardHeader>
+              <IonCardTitle className="card-title">Weekly Progress</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+              <div className="amount-display">
+                <span className="current-amount">${weeklyStats.totalSaved.toFixed(2)}</span>
+                <span className="goal-amount"> / ${weeklyStats.weeklyGoal}</span>
               </div>
               
-              <div className="stat-item">
-                <div className="stat-label">Remaining</div>
-                <div className="stat-value">
-                  ${(savings.monthlyGoal - savings.totalSaved).toFixed(2)}
+              <IonProgressBar 
+                value={weeklyStats.progress} 
+                className="progress-bar"
+              />
+              
+              <div className="progress-text">
+                {Math.round(weeklyStats.progress * 100)}% of weekly goal
+              </div>
+              
+              <div className="stats-grid">
+                <div className="stat-item">
+                  <div className="stat-label">Days Tracked</div>
+                  <div className="stat-value">
+                    {weeklyStats.daysPassed}/7
+                  </div>
+                </div>
+                
+                <div className="stat-item">
+                  <div className="stat-label">Remaining</div>
+                  <div className="stat-value">
+                    ${(weeklyStats.weeklyGoal - weeklyStats.totalSaved).toFixed(2)}
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </IonCardContent>
+          </IonCard>
           
           {/* Action Button */}
           <IonButton 
