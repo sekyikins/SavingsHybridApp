@@ -49,27 +49,45 @@
 
 /* ===== Day Cell Styles ===== */
 .day-cell {
-  position: relative;
   aspect-ratio: 1;
-  min-height: 0;
-  border-radius: 12px;
-  border: 1px solid var(--ion-item-border-color, #e0e0e0);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem;
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
+  position: relative;
   background: transparent !important;
-  opacity: 1;
+  border: 1px solid transparent;
+  color: white;
 }
 
-/* Hide days not in current month */
+/* Style for days from previous/next months */
 .day-cell.other-month {
-  visibility: hidden;
-  pointer-events: none;
-  border: none;
+  color: var(--ion-color-medium);
+  opacity: 0.5;
+}
+
+.day-cell.today .day-number::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: rgba(var(--ion-color-primary-rgb), 0.1);
+  z-index: -1;
+}
+
+.day-cell.selected .day-number::before {
+  background-color: rgba(var(--ion-color-primary-rgb), 0.2);
+}
+
+.day-cell:not(.selected):hover {
+  background: rgba(var(--ion-color-medium-rgb), 0.1);
 }
 
 .day-cell:not(.empty):hover {
@@ -85,31 +103,40 @@
 }
 
 .day-number {
-  font-size: 1rem;
-  font-weight: 500;
-  color: white; /* Force white text for all date numbers */
   position: relative;
-  z-index: 1;
-  display: flex;
+  display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
+  z-index: 1;
+}
+
+.day-indicator {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 3px;
+  border-radius: 3px;
+  opacity: 0.9;
+}
+
+.day-indicator.indicator-positive {
+  background-color: var(--ion-color-success);
+}
+
+.day-indicator.indicator-negative {
+  background-color: var(--ion-color-danger);
+}
+
+.day-indicator.indicator-neutral {
+  background-color: var(--ion-color-medium);
 }
 
 /* ===== Today's Date ===== */
 .day-cell.today .day-number {
   color: var(--ion-color-primary);
-  font-weight: bold;
-}
-
-/* Selected date */
-.day-cell.selected {
-  border: 2px solid var(--ion-color-primary);
-  background-color: rgba(var(--ion-color-primary-rgb), 0.1) !important;
-}
-
-.day-cell.selected .day-number {
   font-weight: bold;
 }
 
@@ -120,8 +147,8 @@
 }
 .today-dot {
   position: absolute;
-  width: 24px;
-  height: 24px;
+  width: 50px;
+  height: 50px;
   background-color: rgba(var(--ion-color-primary-rgb), 0.1);
   border-radius: 50%;
   z-index: 0;
@@ -129,34 +156,18 @@
 
 /* ===== Selected Day ===== */
 .day-cell.selected {
-  background-color: var(--ion-color-primary);
-  color: white;
+  background-color: rgba(var(--ion-color-primary-rgb), 0.1) !important;
   border-color: var(--ion-color-primary);
+  border: 3px solid var(--ion-color-primary);
 }
 
 .day-cell.selected .day-number {
-  color: white;
-}
-
-/* ===== Other Month Days ===== */
-.day-cell.other-month {
-  opacity: 0;
-  pointer-events: none;
-  border: none;
-}
-
-/* ===== Day Indicators ===== */
-.day-indicator {
-  width: 6px;
-  height: 6px;
-  background-color: var(--ion-color-primary);
-  border-radius: 50%;
-  margin-top: auto;
+  font-weight: bold;
 }
 
 /* ===== Today's Date Styling ===== */
 .day-cell.today {
-  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  background: rgba(var(--ion-color-primary-rgb), 0.1) !important;
   border-color: var(--ion-color-primary);
 }
 
@@ -257,8 +268,11 @@ ion-tab-button.tab-selected ion-icon {
 .summary-header {
   font-size: 1.1rem;
   font-weight: 600;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
   color: var(--ion-text-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .summary-amounts {
@@ -279,6 +293,17 @@ ion-tab-button.tab-selected ion-icon {
   border-bottom: none;
   font-weight: 600;
   margin-top: 0.25rem;
+}
+
+/* Number colors */
+.positive {
+  color: #2dd36f; /* Ionic success color */
+  font-weight: 600;
+}
+
+.negative {
+  color: #eb445a; /* Ionic danger color */
+  font-weight: 600;
 }
 
 /* Action Buttons */

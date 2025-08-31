@@ -13,9 +13,7 @@ import {
   IonNote,
   useIonAlert,
   useIonToast,
-  IonListHeader,
-  IonSegment,
-  IonSegmentButton
+  IonListHeader
 } from '@ionic/react';
 import { 
   moon, 
@@ -30,9 +28,7 @@ import {
   documentText,
   cog,
   warning,
-  informationCircle,
-  calendar,
-  calendarOutline
+  informationCircle
 } from 'ionicons/icons';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -257,7 +253,7 @@ const SettingsPage: React.FC = () => {
     <IonPage>
       <IonHeader className="ion-no-border">
         <IonToolbar>
-          <IonTitle className="ion-text-center" style={{ textAlign: 'center', width: '100%' }}>Settings</IonTitle>
+          <IonTitle style={{ textAlign: 'center', width: '100%' }}>Settings</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
@@ -343,47 +339,7 @@ const SettingsPage: React.FC = () => {
             </IonList>
           </SettingsGroup>
 
-          {/* Calendar Settings */}
-          <SettingsGroup title="Calendar Settings" icon={calendar} color="primary">
-            <IonList className="settings-section-content">
-              <IonItem className="setting-item">
-                <IonIcon icon={calendar} color="primary" slot="start" />
-                <IonLabel>
-                  <h3>Start Week on Monday</h3>
-                  <IonNote>Toggle between Monday and Sunday as the first day of the week</IonNote>
-                </IonLabel>
-                <IonToggle 
-                  slot="end" 
-                  checked={settings.calendar.startOfWeek === 'monday'} 
-                  onIonChange={() => toggleSetting('calendar', 'startOfWeek')} 
-                />
-              </IonItem>
-              <IonItem className="setting-item">
-                <IonIcon icon={calendarOutline} color="primary" slot="start" />
-                <IonLabel>
-                  <h3>Default View</h3>
-                  <IonNote>Choose your preferred calendar view</IonNote>
-                </IonLabel>
-                <IonSegment 
-                  value={settings.calendar.defaultView}
-                  onIonChange={e => setSettings(prev => ({
-                    ...prev,
-                    calendar: {
-                      ...prev.calendar,
-                      defaultView: e.detail.value as 'month' | 'week'
-                    }
-                  }))}
-                >
-                  <IonSegmentButton value="month">
-                    <IonLabel>Month</IonLabel>
-                  </IonSegmentButton>
-                  <IonSegmentButton value="week">
-                    <IonLabel>Week</IonLabel>
-                  </IonSegmentButton>
-                </IonSegment>
-              </IonItem>
-            </IonList>
-          </SettingsGroup>
+          
 
           {/* Support Section */}
           <SettingsGroup title="Support" icon={informationCircle} color="primary">
@@ -443,8 +399,8 @@ const SettingsPage: React.FC = () => {
           </SettingsGroup>
 
           {/* App Version */}
-          <div className="ion-text-center ion-padding">
-            <IonNote>Savings App v1.0.0</IonNote>
+          <div className="version-note">
+            Savings App v1.0.0
           </div>
         </div>
       </IonContent>

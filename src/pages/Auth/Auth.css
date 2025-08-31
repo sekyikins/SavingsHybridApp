@@ -35,8 +35,8 @@
   color: #2d3748;
   font-size: 1rem;
   font-weight: 600;
-  margin-bottom: 0.5rem;
   display: block;
+  margin-bottom: 1.5rem;
 }
 
 .auth-input-item ion-input {

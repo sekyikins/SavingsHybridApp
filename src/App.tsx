@@ -39,7 +39,7 @@ import CalendarPage from './pages/Calendar';
 import SettingsPage from './pages/Settings';
 import AuthPage from './pages/Auth';
 import EditOverall from './pages/EditOverall';
-import { EditInfo } from './pages/EditInfo';
+import AddTransact from './pages/AddTransact';
 
 // Initialize Ionic
 setupIonicReact({
@@ -106,14 +106,23 @@ const AppRoutes: React.FC = () => {
     return location.pathname === path || (path === '/home' && location.pathname === '/');
   };
 
+  // If we're on the auth page, don't show tabs
+  if (location.pathname === '/auth') {
+    return (
+      <IonRouterOutlet>
+        <Route exact path="/auth" component={AuthPage} />
+      </IonRouterOutlet>
+    );
+  }
+
+  // For all other routes, show tabs
   return (
     <IonTabs>
       <IonRouterOutlet>
         <Route exact path="/home" component={Home} />
         <Route exact path="/calendar" component={CalendarPage} />
         <Route exact path="/settings" component={SettingsPage} />
-        <Route exact path="/auth" component={AuthPage} />
-        <Route exact path="/edit-transaction/:date" component={EditInfo} />
+        <Route exact path="/edit-transaction/:date" component={AddTransact} />
         <Route exact path="/edit-overall/:date" component={EditOverall} />
         <Route exact path="/">
           <Redirect to="/home" />

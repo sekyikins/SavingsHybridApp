@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, Redirect } from 'react-router-dom';
+import { useLocation, Redirect, useHistory } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
   IonContent,
@@ -28,6 +28,7 @@ interface LocationState {
 }
 
 const AuthPage: React.FC = () => {
+  const history = useHistory();
   const { 
     signIn, 
     signUp, 
@@ -147,6 +148,29 @@ const AuthPage: React.FC = () => {
     }
   };
 
+  // Prevent going back to auth page if already authenticated
+  useEffect(() => {
+    // If user is already authenticated, redirect to home
+    if (isAuthenticated) {
+      history.replace(from);
+      return;
+    }
+
+    // Prevent back navigation
+    const unblock = history.block((tx) => {
+      // Allow navigation to any route except back
+      if (tx.pathname === '/auth') {
+        return false;
+      }
+      return true;
+    });
+
+    // Cleanup function
+    return () => {
+      unblock();
+    };
+  }, [history, isAuthenticated, from]);
+
   // Redirect if already authenticated
   if (isAuthenticated) {
     return <Redirect to={from} />;
@@ -216,8 +240,8 @@ const AuthPage: React.FC = () => {
           <h1 className="auth-title">Welcome Back</h1>
           
           <form onSubmit={handleSubmit} className="auth-form">
-          <IonLabel position="stacked">Email</IonLabel>
             <IonItem className="auth-input-item">
+              <IonLabel position="stacked">Email</IonLabel>
               <IonInput
                 type="email"
                 value={formData.email}
@@ -226,8 +250,8 @@ const AuthPage: React.FC = () => {
               />
               {errors.email && <div style={{ color: 'red' }}>{errors.email}</div>}
             </IonItem>
-            <IonLabel position="stacked">Password</IonLabel>
             <IonItem className="auth-input-item">
+              <IonLabel position="stacked">Password</IonLabel>
               <IonInput
                 type="password"
                 value={formData.password}
