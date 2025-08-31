@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { 
   IonContent, 
   IonHeader, 
@@ -15,23 +15,37 @@ import {
 } from '@ionic/react';
 import { eyeOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
-import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, isWithinInterval, parseISO } from 'date-fns';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 import useTransactions from '../../hooks/useTransactions';
+import { useSettings } from '../../contexts/SettingsContext';
 import './Home.css';
 
 const Home: React.FC = () => {
   const history = useHistory();
   const { transactions } = useTransactions();
+  const { savingsGoals } = useSettings();
   const now = new Date();
+  
+  console.log('=== DEBUG: Home Component ===');
+  console.log('Current savings goals:', savingsGoals);
+  console.log('Current date:', now.toISOString());
+  console.log('All transactions:', transactions);
   
   // Calculate monthly stats
   const monthlyStats = useMemo(() => {
     const start = startOfMonth(now);
     const end = endOfMonth(now);
     
-    const monthlyTransactions = transactions.filter(tx => 
-      isWithinInterval(parseISO(tx.date), { start, end })
-    );
+    console.log('Monthly date range:', { start, end });
+    
+    const monthlyTransactions = transactions.filter(tx => {
+      const txDate = new Date(tx.date);
+      const isInRange = txDate >= start && txDate <= end;
+      console.log(`[Monthly] Transaction ${tx.id} - Date: ${tx.date} (${txDate.toISOString()}), Type: ${tx.type}, Amount: ${tx.amount}, In Range: ${isInRange} (${start.toISOString()} - ${end.toISOString()})`);
+      return isInRange;
+    });
+    
+    console.log('Monthly transactions:', monthlyTransactions);
     
     const deposits = monthlyTransactions
       .filter(tx => tx.type === 'deposit')
@@ -41,8 +55,10 @@ const Home: React.FC = () => {
       .filter(tx => tx.type === 'withdrawal')
       .reduce((sum, tx) => sum + tx.amount, 0);
       
-    const monthlyGoal = 1000; // Default goal, you might want to load this from settings
-    const progress = Math.min(deposits / monthlyGoal, 1);
+    const monthlyGoal = savingsGoals?.monthlyGoal || 1000;
+    const progress = monthlyGoal > 0 ? Math.min(deposits / monthlyGoal, 1) : 0;
+    
+    console.log('Monthly calculations:', { deposits, withdrawals, monthlyGoal, progress });
     
     return {
       totalSaved: deposits - withdrawals,
@@ -57,9 +73,16 @@ const Home: React.FC = () => {
     const start = startOfWeek(now, { weekStartsOn: 1 });
     const end = endOfWeek(now, { weekStartsOn: 1 });
     
-    const weeklyTransactions = transactions.filter(tx => 
-      isWithinInterval(parseISO(tx.date), { start, end })
-    );
+    console.log('Weekly date range:', { start, end });
+    
+    const weeklyTransactions = transactions.filter(tx => {
+      const txDate = new Date(tx.date);
+      const isInRange = txDate >= start && txDate <= end;
+      console.log(`[Weekly] Transaction ${tx.id} - Date: ${tx.date} (${txDate.toISOString()}), Type: ${tx.type}, Amount: ${tx.amount}, In Range: ${isInRange} (${start.toISOString()} - ${end.toISOString()})`);
+      return isInRange;
+    });
+    
+    console.log('Weekly transactions:', weeklyTransactions);
     
     const deposits = weeklyTransactions
       .filter(tx => tx.type === 'deposit')
@@ -69,8 +92,10 @@ const Home: React.FC = () => {
       .filter(tx => tx.type === 'withdrawal')
       .reduce((sum, tx) => sum + tx.amount, 0);
       
-    const weeklyGoal = 250; // Default weekly goal (1/4 of monthly)
-    const progress = Math.min(deposits / weeklyGoal, 1);
+    const weeklyGoal = savingsGoals?.weeklyGoal || 250;
+    const progress = weeklyGoal > 0 ? Math.min(deposits / weeklyGoal, 1) : 0;
+    
+    console.log('Weekly calculations:', { deposits, withdrawals, weeklyGoal, progress });
     
     return {
       totalSaved: deposits - withdrawals,

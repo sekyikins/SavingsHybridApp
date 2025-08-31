@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   IonContent,
   IonHeader,
@@ -14,18 +14,15 @@ import {
   IonIcon,
   IonProgressBar,
   IonText,
-  IonNote,
   IonCard,
   IonCardHeader,
   IonCardTitle,
   IonCardContent,
   IonDatetime,
-  IonDatetimeButton,
   IonModal,
 } from '@ionic/react';
 import { calendarOutline, arrowForward, arrowBack } from 'ionicons/icons';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isWithinInterval, isToday } from 'date-fns';
-import { useHistory, useLocation } from 'react-router-dom';
 import useTransactions from '../../hooks/useTransactions';
 import { Transaction } from '../../types';
 import './Progress.css';
@@ -55,13 +52,14 @@ const WeeklyProgress: React.FC<WeeklyProgressProps> = ({ initialDate = new Date(
   const transactions = getTransactionsInRange(currentWeekStart, weekEnd);
   
   // Calculate weekly stats
-  const weeklyTotal = transactions.reduce((sum: number, t: Transaction) => sum + (t.type === 'deposit' ? t.amount : 0), 0);
-  const weeklyWithdrawals = transactions.reduce((sum: number, t: Transaction) => sum + (t.type === 'withdrawal' ? t.amount : 0), 0);
+  const deposits = transactions.reduce((sum: number, t: Transaction) => sum + (t.type === 'deposit' ? t.amount : 0), 0);
+  const withdrawals = transactions.reduce((sum: number, t: Transaction) => sum + (t.type === 'withdrawal' ? t.amount : 0), 0);
+  const weeklyTotal = deposits - withdrawals;
   const daysPassed = weekDays.filter(day => day <= new Date() && day <= weekEnd).length;
-  const dailyAverage = daysPassed > 0 ? weeklyTotal / daysPassed : 0;
-  const remaining = Math.max(0, weeklyTarget - weeklyTotal);
-  const progress = Math.min(1, weeklyTotal / weeklyTarget);
-  const isTargetReached = weeklyTotal >= weeklyTarget;
+  const dailyAverage = daysPassed > 0 ? deposits / daysPassed : 0; // Daily average based on deposits only
+  const remaining = Math.max(0, weeklyTarget - deposits); // Remaining based on deposits only for savings goal
+  const progress = weeklyTarget > 0 ? Math.min(1, deposits / weeklyTarget) : 0; // Progress based on deposits only
+  const isTargetReached = deposits >= weeklyTarget;
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentWeekStart);
@@ -172,7 +170,7 @@ const WeeklyProgress: React.FC<WeeklyProgressProps> = ({ initialDate = new Date(
               </div>
               <div className="detail-item">
                 <IonText>Withdrawals</IonText>
-                <IonText color="danger">-${weeklyWithdrawals.toFixed(2)}</IonText>
+                <IonText color="danger">-${withdrawals.toFixed(2)}</IonText>
               </div>
             </div>
           </IonCardContent>

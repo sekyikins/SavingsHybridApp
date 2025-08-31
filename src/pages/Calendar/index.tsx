@@ -18,8 +18,7 @@ import {
 import { 
   startOfWeek, 
   addDays, 
-  format, 
-  isSameMonth, 
+  format,
   getDaysInMonth, 
   isToday as isTodayDate, 
   isWeekend as isWeekendDate,
@@ -222,51 +221,6 @@ const CalendarPage: React.FC = () => {
     });
   }, []);
 
-  // Generate calendar days
-  useEffect(() => {
-    const days: CalendarDay[] = [];
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    
-    if (viewMode === 'month') {
-      // Get first day of month and its day of week (0-6, where 0 is Sunday)
-      const firstDayOfMonth = new Date(year, month, 1);
-      const startingDayOfWeek = firstDayOfMonth.getDay();
-      
-      // Adjust for week starting on Monday (1) instead of Sunday (0)
-      const daysToSubtract = startingDayOfWeek === 0 ? 6 : startingDayOfWeek - 1;
-      const startDate = addDays(firstDayOfMonth, -daysToSubtract);
-      
-      // We need 6 rows to ensure we show all days (7 days * 6 weeks = 42 days)
-      for (let i = 0; i < 42; i++) {
-        const date = addDays(startDate, i);
-        const isCurrentMonth = date.getMonth() === month;
-        
-        days.push({
-          date: date.toISOString().split('T')[0],
-          isToday: isTodayDate(date),
-          isWeekend: isWeekendDate(date),
-          isCurrentMonth: isCurrentMonth
-        });
-      }
-    } else {
-      // Week view
-      const startOfWeekDate = startOfWeek(weekStart, { weekStartsOn: 1 });
-      
-      for (let i = 0; i < 7; i++) {
-        const date = addDays(startOfWeekDate, i);
-        days.push({
-          date: date.toISOString().split('T')[0],
-          isToday: isTodayDate(date),
-          isWeekend: isWeekendDate(date),
-          isCurrentMonth: isSameMonth(date, currentDate)
-        });
-      }
-    }
-    
-    setCalendarDays(days);
-  }, [currentDate, viewMode, weekStart]);
-
   // Save calendar state to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('calendarState', JSON.stringify({
@@ -463,7 +417,7 @@ const CalendarPage: React.FC = () => {
   return (
     <IonPage className="calendar-page">
       {/* First Header */}
-      <IonHeader className="ion-no-border">
+      <IonHeader className="calendar-header">
         <IonToolbar>
           <IonTitle className="ion-text-center">
             Calendar
