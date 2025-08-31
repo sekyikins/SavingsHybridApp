@@ -19,34 +19,36 @@
 
 .auth-form {
   background: white;
-  padding: 2rem;
+  padding: 1rem;
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  gap: 0;
+  align-items: center;
 }
 
 .auth-input-item {
-  --background: transparent;
   --padding-start: 0;
   --inner-padding-end: 0;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
+  width: 100%;
 }
 
-.auth-input-item ion-label {
+.auth-input-item .label {
   color: #2d3748;
   font-size: 1rem;
   font-weight: 600;
-  display: block;
-  margin-bottom: 1.5rem;
+  margin-left: 0.5rem;
 }
 
 .auth-input-item ion-input {
-  --padding-start: 12px;
-  --padding-end: 12px;
-  --padding-top: 12px;
-  --padding-bottom: 12px;
+  --padding-start: 6px;
+  --padding-end: 6px;
+  --padding-top: 6px;
+  --padding-bottom: 6px;
   background: white;
   border-radius: 8px;
   border: 1px solid var(--ion-color-medium);
+  font-size: 1.2rem;
 }
 
 .auth-button {
@@ -55,6 +57,7 @@
   --border-radius: 8px;
   margin-top: 1rem;
   height: 48px;
+  width: 80%;
   font-weight: 600;
   transition: all 0.3s ease;
 }
@@ -64,16 +67,17 @@
 }
 
 .auth-links {
+  width: 80%;
   display: flex;
-  justify-content: center;
-  margin-top: 1.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
 }
 
 .auth-link {
   color: #4f46e5;
   background: none;
   border: none;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   cursor: pointer;
 }
 
@@ -115,19 +119,23 @@
   margin-top: 2rem;
 }
 
-.divider {
+.divider, .divider2 {
   display: flex;
   align-items: center;
   margin: 1.5rem 0;
-  color: #718096;
+  color: #7e7e7e;
   font-size: 0.875rem;
 }
 
-.divider::before, .divider::after {
+.divider2 {
+  margin-top: 4rem;
+}
+
+.divider::before, .divider2::before, .divider::after, .divider2::after {
   content: "";
   flex: 1;
   height: 1px;
-  background: #e2e8f0;
+  background: #7e7e7e;
   margin: 0 1rem;
 }
 
@@ -138,7 +146,7 @@
 
 .social-button {
   flex: 1;
-  --border-color: #e2e8f0;
+  --border-color: rgb(109, 109, 109);
   --color: #2d3748;
   --background-hover: #f7fafc;
 }
@@ -179,6 +187,8 @@
 /* Signup link visibility */
 .signup-toggle {
   display: block;
+  justify-self: center;
   text-align: center;
   margin-top: 1.5rem;
+  width: 80%;
 }

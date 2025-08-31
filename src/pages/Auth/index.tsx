@@ -157,7 +157,7 @@ const AuthPage: React.FC = () => {
     }
 
     // Prevent back navigation
-    const unblock = history.block((tx) => {
+    const unblock = history.block((tx: { pathname: string }) => {
       // Allow navigation to any route except back
       if (tx.pathname === '/auth') {
         return false;
@@ -240,8 +240,8 @@ const AuthPage: React.FC = () => {
           <h1 className="auth-title">Welcome Back</h1>
           
           <form onSubmit={handleSubmit} className="auth-form">
-            <IonItem className="auth-input-item">
-              <IonLabel position="stacked">Email</IonLabel>
+            <div className="auth-input-item">
+              <IonLabel className='label'>Email</IonLabel>
               <IonInput
                 type="email"
                 value={formData.email}
@@ -249,9 +249,9 @@ const AuthPage: React.FC = () => {
                 required
               />
               {errors.email && <div style={{ color: 'red' }}>{errors.email}</div>}
-            </IonItem>
-            <IonItem className="auth-input-item">
-              <IonLabel position="stacked">Password</IonLabel>
+            </div>
+            <div className="auth-input-item">
+              <IonLabel className='label'>Password</IonLabel>
               <IonInput
                 type="password"
                 value={formData.password}
@@ -259,7 +259,7 @@ const AuthPage: React.FC = () => {
                 required
               />
               {errors.password && <div style={{ color: 'red' }}>{errors.password}</div>}
-            </IonItem>
+            </div>
             
             <IonButton 
               expand="block" 
@@ -304,13 +304,15 @@ const AuthPage: React.FC = () => {
               </IonButton>
             </div>
           </div>
+
+          <div className="divider2">{isLogin ? 'Need an account?' : 'Already have an account?'}</div>
           <IonButton 
             fill="clear" 
             expand="block" 
             onClick={() => setIsLogin(!isLogin)}
             className="signup-toggle"
           >
-            {isLogin ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
+            {isLogin ? 'Sign up' : 'Sign in'}
           </IonButton>
         </div>
         
