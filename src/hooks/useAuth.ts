@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../config/supabase';
-import { ensureUserProfile } from '../lib/database';
+import { databaseService } from '../services/databaseService';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -60,21 +60,78 @@ export function useAuth() {
 
   const signUp = async (email: string, password: string, username?: string) => {
     try {
+      // 1. First check if we're rate limited
+      const rateLimitKey = `rate_limit_${email}`;
+      const lastAttempt = localStorage.getItem(rateLimitKey);
+      
+      if (lastAttempt) {
+        const timeSinceLastAttempt = Date.now() - parseInt(lastAttempt, 10);
+        const RATE_LIMIT_WINDOW = 5 * 60 * 1000; // 5 minutes
+        
+        if (timeSinceLastAttempt < RATE_LIMIT_WINDOW) {
+          return {
+            data: null,
+            error: {
+              message: 'Too many signup attempts. Please wait a few minutes before trying again.'
+            }
+          };
+        }
+      }
+
+      // 2. Store current attempt time
+      localStorage.setItem(rateLimitKey, Date.now().toString());
+
+      // 3. Sign up the user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             username: username || '',
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       });
-      return { data, error: error ? { message: error.message } : null };
+
+      if (error) {
+        if (error.status === 429) {
+          return {
+            data: null,
+            error: {
+              message: 'Too many signup attempts. Please wait a few minutes before trying again.'
+            }
+          };
+        }
+        throw error;
+      }
+
+      // 4. If signup was successful, initialize user data
+      if (data.user) {
+        try {
+          await databaseService.initializeUserData(data.user.id, email);
+          // Clear rate limit on successful signup
+          localStorage.removeItem(rateLimitKey);
+        } catch (initError) {
+          console.error('Error initializing user data:', initError);
+          // Don't fail the signup if initialization fails, just log it
+        }
+      }
+
+      return { 
+        data, 
+        error: null 
+      };
     } catch (error) {
+      console.error('Signup error:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unknown error occurred during signup';
+      
       return { 
         data: null, 
         error: { 
-          message: error instanceof Error ? error.message : 'An unknown error occurred' 
+          message: errorMessage,
+          isRateLimited: errorMessage.includes('too many requests') || errorMessage.includes('rate limit')
         } 
       };
     }
@@ -86,6 +143,12 @@ export function useAuth() {
         email,
         password,
       });
+
+      if (data.user && !error) {
+        // Ensure user data is initialized
+        await databaseService.initializeUserData(data.user.id, email);
+      }
+
       return { data, error: error ? { message: error.message } : null };
     } catch (error) {
       return { 

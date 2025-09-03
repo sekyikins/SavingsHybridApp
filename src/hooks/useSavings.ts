@@ -1,11 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../config/supabase';
-import type { Database } from '../types/supabase';
 import { useAuth } from './useAuth';
+import { databaseService } from '../services/databaseService';
 
-type SavingsRecord = Database['public']['Tables']['savings']['Row'];
-type SavingsUpdate = Database['public']['Tables']['savings']['Update'];
-type SavingsInsert = Database['public']['Tables']['savings']['Insert'];
+interface SavingsRecord {
+  id?: string;
+  user_id: string;
+  date: string;
+  amount: number;
+  saved: boolean;
+  updated_at?: string;
+}
+
+type SavingsUpdate = {
+  id: string;
+  user_id: string;
+  date?: string;
+  amount?: number;
+  saved?: boolean;
+};
+
+type SavingsInsert = Omit<SavingsRecord, 'id' | 'updated_at'>;
 
 // Debug function to log errors consistently
 const logError = (context: string, error: unknown) => {
@@ -33,6 +47,119 @@ export function useSavings() {
     return () => clearTimeout(timeout);
   }, []);
 
+  const deleteSavings = useCallback(async (id: string): Promise<boolean> => {
+    if (!user) {
+      setError('You must be logged in to delete records');
+      return false;
+    }
+
+    setLoading(true);
+    try {
+      await databaseService.deleteSavings(id);
+      
+      // Update local state
+      setSavings(prev => prev.filter(record => record.id !== id));
+      return true;
+    } catch (error) {
+      console.error('Error in deleteSavings:', error);
+      logError('Error deleting record', error);
+      setError('Failed to delete record');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const saveSavings = useCallback(async (record: SavingsInsert | SavingsUpdate): Promise<SavingsRecord> => {
+    if (!user) throw new Error('User not authenticated');
+
+    console.log('Saving record:', record);
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Ensure user_id is set
+      const recordWithUser = { ...record, user_id: user.id } as SavingsRecord;
+      
+      // Save using database service
+      const savedRecord = await databaseService.saveSavings(recordWithUser);
+      
+      if (!savedRecord) throw new Error('No data returned from save operation');
+
+      // Update local state
+      setSavings(prev => {
+        const exists = prev.some(item => item.id === savedRecord.id);
+        if (exists) {
+          return prev.map(item => item.id === savedRecord.id ? savedRecord : item);
+        } else {
+          return [savedRecord, ...prev].sort((a, b) => 
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+        }
+      });
+
+      return savedRecord;
+    } catch (error) {
+      console.error('Error in saveSavings:', error);
+      logError('Error saving record', error);
+      setError('Failed to save record');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [user, setSavings]);
+
+  const saveSavingsRecord = useCallback(async (record: SavingsInsert | SavingsUpdate): Promise<boolean> => {
+    if (!user) {
+      console.error('No user authenticated');
+      setError('You must be logged in to save records');
+      return false;
+    }
+
+    const isUpdate = 'id' in record;
+    setLoading(true);
+
+    try {
+      // Ensure we have all required fields for the operation with proper types and defaults
+      const recordToSave: Omit<SavingsRecord, 'id' | 'updated_at'> = {
+        ...record, // Spread first to get all properties
+        user_id: record.user_id ?? user.id,
+        date: record.date || new Date().toISOString().split('T')[0],
+        amount: record.amount ?? 0,
+        saved: record.saved ?? false
+      };
+
+      const savedRow = await databaseService.saveSavings(recordToSave);
+
+      if (!savedRow) {
+        console.error('No data returned from save operation');
+        setError('Failed to save record: No data returned');
+        return false;
+      }
+
+      // Update local state based on confirmed DB row
+      setSavings(prev => {
+        const idx = prev.findIndex(r => r.date === record.date);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = { ...copy[idx], ...savedRow };
+          return copy;
+        }
+        return [savedRow, ...prev];
+      });
+
+      console.log('Database save successful and local state synced');
+      return true;
+    } catch (error) {
+      console.error('Error in saveSavingsRecord:', error);
+      logError('Error saving record', error);
+      setError('Failed to save record');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
   const fetchSavings = useCallback(async (): Promise<SavingsRecord[]> => {
     console.log('fetchSavings called, user:', user?.id);
     if (!user) {
@@ -47,37 +174,18 @@ export function useSavings() {
       setLoading(true);
       setError(null);
       
-      console.log('About to execute Supabase query...');
-      
-      // Query with faster timeout for responsiveness
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Query timeout after 3 seconds')), 3000)
-      );
-      
-      const queryPromise = supabase
-        .from('savings')
-        .select('id,user_id,date,amount,saved,updated_at')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false });
-      
-      console.log('Query promises created, waiting for result...');
-      const { data, error: queryError } = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
-      console.log('Supabase query completed. Data:', data, 'Error:', queryError);
-      
-      if (queryError) {
-        console.error('Supabase query error:', queryError);
-        throw queryError;
+      console.log('Fetching savings from database service...');
+      const savingsData = await databaseService.getSavings(user.id);
+      if (savingsData === null) {
+        console.error('No data returned when fetching savings');
+        setError('Failed to load savings data');
+        return [];
       }
-      
-      // Type assertion to handle the response from Supabase
-      const savingsData = (data || []) as unknown as SavingsRecord[];
-      
-      console.log('Processed savings data:', savingsData);
+
       setSavings(savingsData);
-      return savingsData;
+      return savingsData || [];
     } catch (error) {
-      console.error('Detailed error in fetchSavings:', error);
+      console.error('Error in fetchSavings:', error);
       logError('Error in fetchSavings', error);
       
       // Check if it's a timeout or connection error
@@ -90,138 +198,39 @@ export function useSavings() {
       } else {
         setError('Failed to load savings data. The database might not be set up properly.');
         setSavings([]);
-        return [];
+        throw error;
       }
     } finally {
-      console.log('Fetch savings completed, setting loading to false');
       setLoading(false);
     }
-  }, [user?.id]);
-
-  const saveSavingsRecord = useCallback(async (date: string, amount: number, saved: boolean): Promise<boolean> => {
-    if (!user) {
-      console.error('No user found when trying to save record');
-      return false;
-    }
-
-    try {
-      console.log(`Saving record (strict sync) - Date: ${date}, Amount: ${amount}, Saved: ${saved}`);
-
-      // Build payload for upsert to keep DB as the source of truth
-      const payload: any = {
-        user_id: user.id,
-        date,
-        amount: parseFloat(amount.toString()) || 0,
-        saved,
-        updated_at: new Date().toISOString()
-      };
-
-      // Helper to detect transient errors
-      const isTransient = (err: any) => {
-        const msg = (err?.message || err?.error_description || '').toString().toLowerCase();
-        const status = err?.status || err?.code;
-        return (
-          msg.includes('timeout') ||
-          msg.includes('network') ||
-          msg.includes('fetch') ||
-          (typeof status === 'number' && status >= 500)
-        );
-      };
-
-      // Retry with exponential backoff for transient failures
-      const maxAttempts = 3;
-      const delays = [200, 500, 1000]; // ms
-      let lastError: any = null;
-      let savedRow: any = null;
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          // Execute upsert with fast timeout and return the saved row
-          const saveTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Save timeout')), 3000));
-          const dbSave = supabase
-            .from('savings')
-            .upsert(payload, { onConflict: 'user_id,date' })
-            .select();
-
-          const result: any = await Promise.race([dbSave, saveTimeout]);
-
-          if (result && !result.error) {
-            const rows = Array.isArray(result.data) ? result.data : [result.data];
-            savedRow = rows[0];
-            if (savedRow) {
-              break; // success
-            }
-            throw new Error('No row returned from upsert');
-          } else {
-            throw result?.error || new Error('Unknown save error');
-          }
-        } catch (err: any) {
-          lastError = err;
-          console.warn(`Save attempt ${attempt} failed:`, err?.message || err);
-          if (attempt < maxAttempts && isTransient(err)) {
-            const delay = delays[attempt - 1] || 1000;
-            await new Promise(res => setTimeout(res, delay));
-            continue;
-          }
-          break; // non-transient or max attempts reached
-        }
-      }
-
-      if (!savedRow) {
-        console.error('Database save failed after retries:', lastError);
-        setError('Failed to save record to the database.');
-        return false;
-      }
-
-      // Update local state based on confirmed DB row
-      setSavings(prev => {
-        const idx = prev.findIndex(r => r.date === date);
-        if (idx >= 0) {
-          const copy = [...prev];
-          copy[idx] = { ...copy[idx], ...savedRow } as any;
-          return copy;
-        }
-        return [savedRow as any, ...prev];
-      });
-
-      console.log('Database save successful and local state synced');
-      return true;
-    } catch (error) {
-      console.error('Error in saveSavingsRecord (strict):', error);
-      logError('Error saving record', error);
-      setError('Failed to save record');
-      return false;
-    }
-  }, [user, setSavings]);
+  }, [user]);
 
   // Fetch data on mount and when user changes
   useEffect(() => {
-    console.log('useEffect in useSavings, user:', user?.id);
+    if (!user) {
+      setSavings([]);
+      setLoading(false);
+      return;
+    }
+
     let isMounted = true;
+    let refreshInterval: ReturnType<typeof setInterval>;
 
     const fetchData = async () => {
+      if (!isMounted) return;
+      
+      setLoading(true);
       try {
-        setLoading(true);
-        setError(null);
-        const data = await fetchSavings();
+        const data = await databaseService.getSavings(user.id);
         
-        if (isMounted) {
-          // Check if today's record exists in the fetched data
-          const today = new Date().toISOString().split('T')[0];
-          const hasSavedToday = data.some(record => record.date === today && record.saved);
-          
-          // Update the parent component's state if it exists
-          if (window.parent && window.parent.postMessage) {
-            window.parent.postMessage({ 
-              type: 'SAVINGS_UPDATED',
-              hasSavedToday 
-            }, '*');
-          }
-        }
+        if (!isMounted) return;
+        
+        setSavings(data || []);
       } catch (error) {
+        if (!isMounted) return;
         console.error('Error in fetchData:', error);
-        if (isMounted) {
-          setError('Failed to fetch savings data');
-        }
+        logError('Error fetching savings data', error);
+        setError('Failed to load savings data');
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -232,30 +241,47 @@ export function useSavings() {
     fetchData();
 
     // Set up an interval to refresh data periodically (every 5 minutes)
-    const refreshInterval = setInterval(fetchData, 5 * 60 * 1000);
+    const intervalId = window.setInterval(fetchData, 5 * 60 * 1000);
 
+    // Clean up the interval and mounted flag on component unmount
     return () => {
       isMounted = false;
-      clearInterval(refreshInterval);
+      window.clearInterval(intervalId);
     };
-  }, [fetchSavings, user?.id]);
+  }, [user]);
 
   // Add a manual refresh function that can be called from parent components
-  const refreshSavings = useCallback(async () => {
+  const refreshSavings = useCallback(async (): Promise<SavingsRecord[]> => {
+    if (!user) {
+      setSavings([]);
+      return [];
+    }
+    
     try {
       setLoading(true);
-      return await fetchSavings();
+      const data = await databaseService.getSavings(user.id);
+      
+      setSavings(data);
+      return data;
+    } catch (error) {
+      console.error('Error in refreshSavings:', error);
+      logError('Error refreshing savings', error);
+      setError('Failed to refresh savings data');
+      return [];
     } finally {
       setLoading(false);
     }
-  }, [fetchSavings]);
+  }, [user]);
 
-  return { 
-    savings, 
-    loading, 
-    error, 
-    saveSavingsRecord, 
-    refetch: fetchSavings,
-    refreshSavings 
+  return {
+    savings,
+    loading,
+    error,
+    saveSavings: saveSavingsRecord,
+    deleteSavings,
+    refreshSavings,
+    setSavings,
+    setLoading,
+    setError,
   };
 }

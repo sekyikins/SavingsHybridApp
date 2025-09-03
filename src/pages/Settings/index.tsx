@@ -344,7 +344,13 @@ const SettingsPage: React.FC = () => {
           {/* Support Section */}
           <SettingsGroup title="Support" icon={informationCircle} color="primary">
             <IonList className="settings-section-content">
-              <IonItem button detail={true} className="setting-item">
+              <IonItem 
+                button 
+                detail={true} 
+                className="setting-item" 
+                routerLink="/help-support"
+                routerDirection="forward"
+              >
                 <IonIcon icon={helpCircle} color="primary" slot="start" />
                 <IonLabel>
                   <h3>Help & Support</h3>

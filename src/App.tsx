@@ -44,6 +44,10 @@ import MonthlyProgress from './pages/Progress/MonthlyProgress';
 import WeeklyProgress from './pages/Progress/WeeklyProgress';
 import PrivacyPolicy from './pages/Legal/PrivacyPolicy';
 import TermsOfService from './pages/Legal/TermsOfService';
+import HelpAndSupport from './pages/HelpAndSupport';
+import BugReport from './pages/HelpAndSupport/BugReport';
+import Feedback from './pages/HelpAndSupport/Feedback';
+import EmergencySupport from './pages/HelpAndSupport/EmergencySupport';
 
 // Initialize Ionic
 setupIonicReact({
@@ -133,6 +137,10 @@ const AppRoutes: React.FC = () => {
         <Route path="/auth" component={AuthPage} />
         <Route exact path="/edit-transaction/:date" component={AddTransact} />
         <Route exact path="/edit-overall/:date" component={EditOverall} />
+        <Route exact path="/help-support" component={HelpAndSupport} />
+        <Route exact path="/report-bug" component={BugReport} />
+        <Route exact path="/feedback" component={Feedback} />
+        <Route exact path="/emergency" component={EmergencySupport} />
         <Route exact path="/">
           <Redirect to="/home" />
         </Route>

@@ -155,7 +155,7 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
       </IonHeader>
       <IonContent className="ion-padding">
         {/* Month Navigation */}
-        <div className="month-navigation">
+        <div className="progress-navigation">
           <IonButton fill="clear" onClick={() => navigateMonth('prev')}>
             <IonIcon icon={arrowBack} />
           </IonButton>
