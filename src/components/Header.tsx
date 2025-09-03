@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { UsernameDialog } from './UsernameDialog';

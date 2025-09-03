@@ -10,7 +10,6 @@ import {
   IonButton,
   IonCard,
   IonCardHeader,
-  IonCardSubtitle,
   IonCardTitle,
   IonCardContent,
   IonDatetime,
@@ -25,7 +24,7 @@ import {
 import { 
   arrowBack, 
   arrowForward, 
-  checkmarkCircle,
+  calendarOutline,
 } from 'ionicons/icons';
 import useTransactions from '../../hooks/useTransactions';
 import { 
@@ -76,7 +75,7 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
   });
 
   // Calculate monthly stats with useMemo to prevent unnecessary recalculations
-  const { total, withdrawals, dailyAverage, remaining, progress, isTargetReached, extra } = useMemo<MonthlyStats>(() => {
+  const { total, withdrawals, dailyAverage, remaining, progress, isTargetReached } = useMemo<Omit<MonthlyStats, 'extra'>>(() => {
     const transactions = getTransactionsInRange(monthStart, monthEnd);
     
     const total = transactions.reduce((sum, t) => 
@@ -89,7 +88,6 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
     const dailyAvg = daysPassed > 0 ? total / daysPassed : 0;
     const targetReached = monthlyTarget > 0 && total >= monthlyTarget;
     const remaining = Math.max(0, monthlyTarget - total);
-    const extra = Math.max(0, total - monthlyTarget);
     const prog = monthlyTarget > 0 ? Math.min(1, total / monthlyTarget) : 0;
     
     return {
@@ -98,8 +96,7 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
       dailyAverage: dailyAvg,
       remaining,
       progress: prog,
-      isTargetReached: targetReached,
-      extra: extra
+      isTargetReached: targetReached
     };
   }, [getTransactionsInRange, monthStart, monthEnd, monthDays, monthlyTarget, today, monthEnd]);
 
@@ -117,12 +114,12 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
   }, [getTransactionsInRange]);
 
   // Get days that have transactions
-  const daysWithTransactions = useMemo(() => {
-    return monthDays.filter(day => {
-      const dayTransactions = getTransactionsByDay(day);
-      return dayTransactions.length > 0;
-    });
-  }, [monthDays, getTransactionsByDay]);
+  // const daysWithTransactions = useMemo(() => {
+  //   return monthDays.filter(day => {
+  //     const dayTransactions = getTransactionsByDay(day);
+  //     return dayTransactions.length > 0;
+  //   });
+  // }, [monthDays, getTransactionsByDay]);
 
   const handleDateChange = (e: CustomEvent) => {
     const selectedDate = new Date(e.detail.value);
@@ -160,7 +157,10 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
             <IonIcon icon={arrowBack} />
           </IonButton>
           
-          <h2>{monthName}</h2>
+          <IonButton fill="clear" onClick={() => setShowDatePicker(true)}>
+            {monthName}
+            <IonIcon icon={calendarOutline} slot="end" />
+          </IonButton>
           
           <IonButton 
             fill="clear" 
@@ -186,53 +186,50 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
             </IonCardTitle>
           </IonCardHeader>
           <IonCardContent>
-            <div className="progress-container">
-              <IonProgressBar 
-                value={progress}
-                color={isTargetReached ? 'success' : 'primary'}
-              />
-              <div className="progress-text">
-                {isTargetReached 
-                  ? `100% of monthly goal with $${extra.toFixed(2)} extra`
-                  : `${Math.round(progress * 100)}% of monthly goal`
-                }
-                {isTargetReached && (
-                  <IonIcon 
-                    icon={checkmarkCircle} 
-                    color="success" 
-                    className="target-reached-icon"
-                    style={{ marginLeft: '8px' }}
-                  />
-                )}
-              </div>
-            </div>
+            <IonProgressBar 
+              value={progress}
+              color={isTargetReached ? 'success' : 'primary'}
+              className="progress-bar"
+            />
+            
+            <IonText className="progress-text">
+              {monthlyTarget > 0 ? `${Math.round((total / monthlyTarget) * 100)}%` : '0%'} of monthly goal
+            </IonText>
             
             <div className="progress-stats">
-              <div className="stat">
-                <IonText color="primary">${withdrawals.toFixed(2)}</IonText>
-                <IonText color="medium">Withdrawn</IonText>
+              <div className="stat-item">
+                <IonText color="medium">Saved</IonText>
+                <IonText color="primary">${total.toFixed(2)}</IonText>
               </div>
-              
-              <div className="stat">
-                <IonText color={remaining > 0 ? 'success' : 'danger'}>
+              <div className="stat-item">
+                <IonText color="medium">Target</IonText>
+                {isEditing ? (
+                  <div className="target-edit">
+                    <input 
+                      type="number" 
+                      value={editingTarget}
+                      onChange={(e) => setEditingTarget(parseFloat(e.target.value) || 0)}
+                      min="0"
+                      step="0.01"
+                      className="target-input"
+                    />
+                    <IonButton size="small" onClick={saveTarget}>Save</IonButton>
+                  </div>
+                ) : (
+                  <IonText className="editable" onClick={() => setIsEditing(true)}>
+                    ${monthlyTarget.toFixed(2)}
+                  </IonText>
+                )}
+              </div>
+              <div className="stat-item">
+                <IonText color="medium">Remaining</IonText>
+                <IonText color={remaining > 0 ? 'danger' : 'success'}>
                   ${remaining.toFixed(2)}
                 </IonText>
-                <IonText color="medium">Remaining</IonText>
-              </div>
-              
-              <div className="stat">
-                <IonText color={dailyAverage >= (monthlyTarget / 30) ? 'success' : 'danger'}>
-                  ${dailyAverage.toFixed(2)}
-                </IonText>
-                <IonText color="medium">Daily Avg</IonText>
               </div>
             </div>
             
             <div className="progress-details">
-              <div className="detail-item">
-                <IonText>Target</IonText>
-                <IonText>${monthlyTarget.toFixed(2)}</IonText>
-              </div>
               <div className="detail-item">
                 <IonText>Daily Average</IonText>
                 <IonText>${dailyAverage.toFixed(2)}</IonText>
@@ -242,78 +239,24 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
                 <IonText color="danger">-${withdrawals.toFixed(2)}</IonText>
               </div>
             </div>
-            
-            <div className="target-edit">
-              <IonText>Monthly Target:</IonText>
-              {isEditing ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input 
-                    type="number" 
-                    value={editingTarget}
-                    onChange={(e) => setEditingTarget(parseFloat(e.target.value) || 0)}
-                    min="0"
-                    step="0.01"
-                    className="target-input"
-                    style={{ flex: 1 }}
-                  />
-                  <IonButton size="small" onClick={saveTarget}>Save</IonButton>
-                  <IonButton size="small" color="medium" fill="clear" onClick={() => setIsEditing(false)}>
-                    Cancel
-                  </IonButton>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <IonText onClick={() => setIsEditing(true)} className="editable">
-                    ${monthlyTarget.toFixed(2)}
-                  </IonText>
-                  <IonButton size="small" fill="clear" onClick={() => setIsEditing(true)}>
-                    Edit
-                  </IonButton>
-                </div>
-              )}
-            </div>
           </IonCardContent>
         </IonCard>
 
         {/* Transactions List */}
-        <IonList>
+        <IonList className="transactions-list">
           {monthDays.map((day, index) => {
             const dayTransactions = getTransactionsByDay(day);
-            const isDayToday = isToday(day);
-            const dayTotal = dayTransactions.reduce((sum: number, t: Transaction) => {
-              return t.type === 'deposit' ? sum + t.amount : sum - t.amount;
-            }, 0);
+            const dayTotal = dayTransactions.reduce((sum: number, t: Transaction) => sum + (t.type === 'deposit' ? t.amount : -t.amount), 0);
             
             return (
-              <IonItem 
-                key={index} 
-                className={`${isDayToday ? 'today' : ''} ${dayTransactions.length > 0 ? 'has-transactions' : ''}`}
-                button
-                routerLink={`/transactions/day/${format(day, 'yyyy-MM-dd')}`}
-                detail={dayTransactions.length > 0}
-              >
+              <IonItem key={index} className={isToday(day) ? 'today' : ''}>
                 <IonLabel>
-                  <h3>
-                    {format(day, 'EEEE, MMM d')}
-                    {isDayToday && <span className="today-badge">Today</span>}
-                  </h3>
-                  {dayTransactions.length > 0 ? (
-                    <p>{dayTransactions.length} transaction{dayTransactions.length !== 1 ? 's' : ''}</p>
-                  ) : (
-                    <p className="no-transactions">No transactions</p>
-                  )}
+                  <h3>{format(day, 'EEEE')}</h3>
+                  <p>{format(day, 'MMM d, yyyy')}</p>
                 </IonLabel>
-                
-                {dayTransactions.length > 0 && (
-                  <IonText 
-                    slot="end" 
-                    color={dayTotal >= 0 ? 'success' : 'danger'}
-                    className="transaction-amount"
-                  >
-                    {dayTotal >= 0 ? '+' : '-'}
-                    ${Math.abs(dayTotal).toFixed(2)}
-                  </IonText>
-                )}
+                <IonText color={dayTotal >= 0 ? 'primary' : 'danger'} slot="end">
+                  {dayTotal >= 0 ? '+' : ''}{dayTotal.toFixed(2)}
+                </IonText>
               </IonItem>
             );
           })}
@@ -321,19 +264,22 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
 
         {/* Date Picker Modal */}
         <IonModal isOpen={showDatePicker} onDidDismiss={() => setShowDatePicker(false)}>
-          <IonCardHeader>
-            <IonCardSubtitle>Monthly Progress</IonCardSubtitle>
-            <IonCardTitle>
-              ${total.toFixed(2)} 
-              <span className="target-text">/ ${monthlyTarget.toFixed(2)}</span>
-            </IonCardTitle>
-          </IonCardHeader>
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Select Month</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setShowDatePicker(false)}>Done</IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
           <IonContent>
             <IonDatetime
-              value={currentMonth.toISOString()}
-              onIonChange={handleDateChange}
               presentation="month"
+              onIonChange={handleDateChange}
+              value={currentMonth.toISOString()}
               showDefaultButtons
+              doneText="Select"
+              cancelText="Cancel"
             />
           </IonContent>
         </IonModal>

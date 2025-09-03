@@ -17,18 +17,18 @@ interface SettingsContextType {
   updateSavingsGoals: (goals: Partial<SavingsGoals>) => void;
 }
 
-const defaultSettings: SettingsContextType = {
-  calendar: {
-    startOfWeek: 'monday',
-    defaultView: 'month'
-  },
-  savingsGoals: {
-    monthlyGoal: 1000,
-    weeklyGoal: 250
-  },
-  updateCalendarSettings: () => {},
-  updateSavingsGoals: () => {}
-};
+// const defaultSettings: SettingsContextType = {
+//   calendar: {
+//     startOfWeek: 'monday',
+//     defaultView: 'month'
+//   },
+//   savingsGoals: {
+//     monthlyGoal: 1000,
+//     weeklyGoal: 250
+//   },
+//   updateCalendarSettings: () => {},
+//   updateSavingsGoals: () => {}
+// };
 
 export const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 

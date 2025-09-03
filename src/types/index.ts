@@ -5,4 +5,7 @@ export interface Transaction {
   date: string;
   description: string;
   category?: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
 }

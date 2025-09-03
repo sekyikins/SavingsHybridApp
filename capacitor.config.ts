@@ -1,7 +1,9 @@
-const config = {
+import { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
   appId: 'com.savings.app',
   appName: 'Savings App',
-  webDir: 'build',
+  webDir: 'dist',
   server: {
     androidScheme: 'https',
     iosScheme: 'https',

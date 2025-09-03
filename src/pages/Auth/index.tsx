@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, Redirect, useHistory } from 'react-router-dom';
+import { useLocation, useHistory } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
   IonContent,
@@ -9,7 +9,8 @@ import {
   IonLabel,
   IonLoading,
   IonAlert,
-  IonIcon
+  IonIcon,
+  IonToast
 } from '@ionic/react';
 import { logoGoogle, logoApple } from 'ionicons/icons';
 import './Auth.css';
@@ -18,6 +19,8 @@ import { supabase } from '../../config/supabase';
 interface FormData {
   email: string;
   password: string;
+  firstName: string;
+  lastName: string;
 }
 
 interface LocationState {
@@ -33,6 +36,7 @@ const AuthPage: React.FC = () => {
     signUp, 
     resetPassword, 
     user, 
+    loading,
     error: authError 
   } = useAuth();
   const isAuthenticated = !!user;
@@ -43,20 +47,51 @@ const AuthPage: React.FC = () => {
   // Form state
   const [formData, setFormData] = useState<FormData>({
     email: '',
-    password: ''
+    password: '',
+    firstName: '',
+    lastName: ''
   });
-  
+
   // UI state
   const [isLogin, setIsLogin] = useState(true);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
+  const [alertType, setAlertType] = useState<'success' | 'error' | 'warning'>('error');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastColor, setToastColor] = useState<'success' | 'danger' | 'warning'>('danger');
   
   // New state for validation
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
+    firstName?: string;
+    lastName?: string;
   }>({});
+  
+  // Helper function to show toast notifications
+  const showToastNotification = (message: string, color: 'success' | 'danger' | 'warning' = 'danger') => {
+    setToastMessage(message);
+    setToastColor(color);
+    setShowToast(true);
+  };
+
+  // Helper function to show alert with better categorization
+  const showAlertMessage = (message: string, type: 'success' | 'error' | 'warning' = 'error') => {
+    setAlertMessage(message);
+    setAlertType(type);
+    setShowAlert(true);
+  };
+
+  const toggleAuthMode = () => {
+    setIsLogin(!isLogin);
+    setFormData({ email: '', password: '', firstName: '', lastName: '' });
+    setAlertMessage('');
+    setShowAlert(false);
+    setShowToast(false);
+    setErrors({});
+  };
 
   // Validate email format
   const validateEmail = (email: string) => {
@@ -96,58 +131,83 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  // Enhanced submit handler
+  // Enhanced submit handler with better error messages
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Final validation check
-    const newErrors = {
-      email: !formData.email ? 'Email is required' 
-        : !validateEmail(formData.email) ? 'Invalid email format' : undefined,
-      password: !formData.password ? 'Password is required'
-        : !validatePassword(formData.password) 
-          ? 'Password must be at least 6 characters' 
-          : undefined
-    };
+    // Basic validation with specific messages
+    if (!formData.email || !formData.password) {
+      showToastNotification('Please fill in all required fields', 'warning');
+      return;
+    }
     
-    setErrors(newErrors);
+    if (!validateEmail(formData.email)) {
+      showToastNotification('Please enter a valid email address', 'warning');
+      return;
+    }
     
-    if (Object.values(newErrors).some(Boolean)) {
+    if (!validatePassword(formData.password)) {
+      showToastNotification('Password must be at least 6 characters long', 'warning');
+      return;
+    }
+    
+    if (!isLogin && (!formData.firstName || !formData.lastName)) {
+      showToastNotification('Please enter your first and last name', 'warning');
       return;
     }
     
     setIsProcessing(true);
     
     try {
-      const { error } = isLogin 
-        ? await signIn(formData.email, formData.password)
-        : await signUp(formData.email, formData.password);
-        
-      if (error) {
-        throw error;
+      let result;
+      if (isLogin) {
+        result = await signIn(formData.email, formData.password);
+      } else {
+        result = await signUp(
+          formData.email, 
+          formData.password, 
+          `${formData.firstName} ${formData.lastName}`,
+          { firstName: formData.firstName, lastName: formData.lastName }
+        );
       }
-    } catch (err) {
-      let errorMessage = 'An error occurred';
       
-      if (err instanceof Error) {
-        errorMessage = err.message;
+      if (result.error) {
+        // Enhanced error message handling
+        const errorMessage = result.error.message;
         
-        // Map common error codes to user-friendly messages
-        if (errorMessage.includes('invalid login credentials')) {
-          errorMessage = 'Invalid email or password';
-        } else if (errorMessage.includes('Email rate limit exceeded')) {
-          errorMessage = 'Too many attempts. Please try again later.';
+        if (errorMessage.includes('Invalid login credentials')) {
+          showAlertMessage('Invalid email or password. Please check your credentials and try again.', 'error');
+        } else if (errorMessage.includes('Email not confirmed')) {
+          showAlertMessage('Please check your email and click the confirmation link before signing in.', 'warning');
+        } else if (errorMessage.includes('User already registered')) {
+          showAlertMessage('An account with this email already exists. Please sign in instead.', 'warning');
+        } else if (errorMessage.includes('Password should be at least')) {
+          showToastNotification('Password must be at least 6 characters long', 'warning');
+        } else if (errorMessage.includes('Invalid email')) {
+          showToastNotification('Please enter a valid email address', 'warning');
+        } else if (errorMessage.includes('too many requests') || errorMessage.includes('rate limit')) {
+          showAlertMessage('Too many attempts. Please wait a few minutes before trying again.', 'warning');
+        } else if (errorMessage.includes('Account created successfully')) {
+          showAlertMessage('Account created successfully! You can now sign in with your credentials.', 'success');
+        } else {
+          showAlertMessage(errorMessage, 'error');
         }
+      } else if (!isLogin) {
+        // Success message for signup
+        showToastNotification('Account created successfully! Welcome!', 'success');
+      } else {
+        // Success message for signin
+        showToastNotification('Welcome back!', 'success');
       }
-      
-      setAlertMessage(errorMessage);
-      setShowAlert(true);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      showAlertMessage(`Authentication failed: ${errorMessage}`, 'error');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Prevent going back to auth page if already authenticated
+  // Prevent going back to auth page if already authenticated - ALWAYS call this hook
   useEffect(() => {
     // If user is already authenticated, redirect to home
     if (isAuthenticated) {
@@ -170,23 +230,37 @@ const AuthPage: React.FC = () => {
     };
   }, [history, isAuthenticated, from]);
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    return <Redirect to={from} />;
-  }
-
-  // Show error alert if authentication fails
+  // Show error alert if authentication fails - ALWAYS call this hook
   useEffect(() => {
     if (authError) {
-      setAlertMessage(authError.message || 'An error occurred');
-      setShowAlert(true);
+      showAlertMessage(authError.message || 'An authentication error occurred', 'error');
     }
   }, [authError]);
 
+  // Show loading during auth state determination
+  if (loading) {
+    return (
+      <IonPage>
+        <IonContent className="auth-container">
+          <IonLoading isOpen={true} message="Loading..." />
+        </IonContent>
+      </IonPage>
+    );
+  }
+
+  // Don't render anything if already authenticated (redirect will happen in useEffect)
+  if (isAuthenticated) {
+    return null;
+  }
+
   const handleForgotPassword = async () => {
     if (!formData.email) {
-      setAlertMessage('Please enter your email address first');
-      setShowAlert(true);
+      showToastNotification('Please enter your email address first', 'warning');
+      return;
+    }
+    
+    if (!validateEmail(formData.email)) {
+      showToastNotification('Please enter a valid email address', 'warning');
       return;
     }
     
@@ -196,12 +270,16 @@ const AuthPage: React.FC = () => {
       if (error) {
         throw error;
       }
-      setAlertMessage('Password reset email sent. Please check your inbox.');
-      setShowAlert(true);
+      showAlertMessage('Password reset email sent successfully! Please check your inbox and follow the instructions.', 'success');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to send reset email';
-      setAlertMessage(errorMessage);
-      setShowAlert(true);
+      if (errorMessage.includes('too many requests') || errorMessage.includes('rate limit')) {
+        showAlertMessage('Too many password reset attempts. Please wait a few minutes before trying again.', 'warning');
+      } else if (errorMessage.includes('User not found')) {
+        showAlertMessage('No account found with this email address. Please check your email or sign up for a new account.', 'error');
+      } else {
+        showAlertMessage(`Password reset failed: ${errorMessage}`, 'error');
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -210,6 +288,7 @@ const AuthPage: React.FC = () => {
   const handleSocialLogin = async (provider: 'google' | 'apple') => {
     setIsProcessing(true);
     setShowAlert(false);
+    setShowToast(false);
     
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -220,13 +299,18 @@ const AuthPage: React.FC = () => {
       });
       
       if (error) throw error;
+      
+      showToastNotification(`Redirecting to ${provider === 'google' ? 'Google' : 'Apple'} for authentication...`, 'success');
     } catch (err) {
-      setAlertMessage(
-        err instanceof Error 
-          ? err.message 
-          : 'Failed to authenticate with provider'
-      );
-      setShowAlert(true);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to authenticate with provider';
+      
+      if (errorMessage.includes('popup')) {
+        showAlertMessage('Please allow popups for this site and try again.', 'warning');
+      } else if (errorMessage.includes('network')) {
+        showAlertMessage('Network error. Please check your connection and try again.', 'error');
+      } else {
+        showAlertMessage(`${provider === 'google' ? 'Google' : 'Apple'} authentication failed: ${errorMessage}`, 'error');
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -249,6 +333,30 @@ const AuthPage: React.FC = () => {
               />
               {errors.email && <div style={{ color: 'red' }}>{errors.email}</div>}
             </div>
+            {!isLogin && (
+              <>
+                <div className="auth-input-item">
+                  <IonLabel className='label'>First Name</IonLabel>
+                  <IonInput
+                    type="text"
+                    value={formData.firstName}
+                    onIonChange={handleInputChange('firstName')}
+                    required={!isLogin}
+                  />
+                  {errors.firstName && <div style={{ color: 'red' }}>{errors.firstName}</div>}
+                </div>
+                <div className="auth-input-item">
+                  <IonLabel className='label'>Last Name</IonLabel>
+                  <IonInput
+                    type="text"
+                    value={formData.lastName}
+                    onIonChange={handleInputChange('lastName')}
+                    required={!isLogin}
+                  />
+                  {errors.lastName && <div style={{ color: 'red' }}>{errors.lastName}</div>}
+                </div>
+              </>
+            )}
             <div className="auth-input-item">
               <IonLabel className='label'>Password</IonLabel>
               <IonInput
@@ -269,15 +377,17 @@ const AuthPage: React.FC = () => {
               {isProcessing ? '' : (isLogin ? 'Sign In' : 'Sign Up')}
             </IonButton>
             
-            <div className="auth-links">
-              <button 
-                type="button"
-                onClick={handleForgotPassword}
-                className="auth-link"
-              >
-                Forgot password?
-              </button>
-            </div>
+            {isLogin && (
+              <div className="auth-links">
+                <button 
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="auth-link"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
           </form>
           
           <div className="social-login">
@@ -316,12 +426,26 @@ const AuthPage: React.FC = () => {
         </div>
         
         <IonLoading isOpen={isProcessing} message="Authenticating..." />
+        
         <IonAlert
           isOpen={showAlert}
           onDidDismiss={() => setShowAlert(false)}
-          header={alertMessage.includes('sent') ? 'Success' : 'Error'}
+          header={
+            alertType === 'success' ? 'Success' : 
+            alertType === 'warning' ? 'Warning' : 
+            'Error'
+          }
           message={alertMessage}
           buttons={['OK']}
+        />
+        
+        <IonToast
+          isOpen={showToast}
+          onDidDismiss={() => setShowToast(false)}
+          message={toastMessage}
+          duration={3000}
+          position="top"
+          color={toastColor}
         />
       </IonContent>
     </IonPage>

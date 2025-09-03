@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   IonPage, 
   IonHeader, 
@@ -36,7 +36,7 @@ import './HelpAndSupport.css';
 
 const HelpAndSupport: React.FC = () => {
   const history = useHistory();
-  const [expanded, setExpanded] = useState<string | undefined>();
+  // const [expanded, setExpanded] = useState<string | undefined>();
 
   const faqs = [
     {
@@ -57,9 +57,9 @@ const HelpAndSupport: React.FC = () => {
     }
   ];
 
-  const handleAccordionToggle = (value: string) => {
-    setExpanded(expanded === value ? undefined : value);
-  };
+  // const handleAccordionToggle = (value: string) => {
+  //   setExpanded(expanded === value ? undefined : value);
+  // };
 
   return (
     <IonPage>

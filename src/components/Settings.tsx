@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, FC, ReactNode } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/supabase';
 
 interface SettingsProps {
@@ -21,10 +21,6 @@ interface Currency {
   name: string;
 }
 
-interface DayOfWeekOption {
-  value: DayOfWeek;
-  label: string;
-}
 
 const CURRENCIES: Currency[] = [
   { code: 'GHS', symbol: '₵', name: 'Ghanaian Cedi' },
@@ -39,17 +35,13 @@ const getCurrencySymbol = (currencyCode: string): string => {
   return currency ? currency.symbol : '₵'; // Default to GHS symbol
 };
 
-const DAYS_OF_WEEK: DayOfWeekOption[] = [
-  { value: 'SUN', label: 'Sunday' },
-  { value: 'MON', label: 'Monday' }
-];
 
 interface SettingsContextType {
   settings: AppSettings;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
 }
 
-export const Settings: FC<SettingsProps> = ({ isOpen, onClose, userId }): JSX.Element | null => {
+export const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, userId }): JSX.Element | null => {
   const [settings, setSettingsState] = useState<AppSettings>({
     startingDayOfWeek: 'MON', // Monday by default
     currency: 'GHS',
@@ -133,16 +125,12 @@ export const Settings: FC<SettingsProps> = ({ isOpen, onClose, userId }): JSX.El
         : 'MON' // Default to 'MON' if invalid
     };
     
-    console.log('Saving settings:', { userId, settingsToSave });
     
     // Update local state and localStorage immediately for better UX
     setSettingsState(settingsToSave);
     localStorage.setItem('appSettings', JSON.stringify(settingsToSave));
     
     try {
-      console.log('Attempting to upsert settings in database...');
-      console.log('Table: user_settings');
-      console.log('User ID:', userId);
       
       // First try to update existing settings
       const { data: updateData, error: updateError } = await supabase
@@ -156,11 +144,9 @@ export const Settings: FC<SettingsProps> = ({ isOpen, onClose, userId }): JSX.El
         .eq('user_id', userId)
         .select();
 
-      console.log('Update result:', { updateData, updateError });
       
       // If no rows were updated, try to insert
       if (updateError || (updateData && updateData.length === 0)) {
-        console.log('No existing settings found or update failed, attempting to insert...');
         const { data: insertData, error: insertError } = await supabase
           .from('user_settings')
           .insert([
@@ -173,7 +159,6 @@ export const Settings: FC<SettingsProps> = ({ isOpen, onClose, userId }): JSX.El
           ])
           .select();
           
-        console.log('Insert result:', { insertData, insertError });
         
         if (insertError) {
           console.error('Error inserting settings:', insertError);
@@ -185,15 +170,12 @@ export const Settings: FC<SettingsProps> = ({ isOpen, onClose, userId }): JSX.El
           return false;
         }
         
-        console.log('Settings inserted successfully');
       } else if (updateError) {
         console.error('Error updating settings:', updateError);
         throw updateError;
       } else {
-        console.log('Settings updated successfully');
       }
       
-      console.log('Settings saved successfully to database');
       
       // Notify other components of settings change
       window.dispatchEvent(new CustomEvent('settingsChanged', { 

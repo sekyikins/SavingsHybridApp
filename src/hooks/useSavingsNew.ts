@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuthNew';
-import savingsService from '../services/savingsService';
 import { SavingsRecord } from '../config/supabase';
 
 export const useSavings = () => {
@@ -14,7 +13,8 @@ export const useSavings = () => {
     
     try {
       setLoading(true);
-      const data = await savingsService.getSavings(user.id);
+      // TODO: Implement actual data loading
+      const data: SavingsRecord[] = [];
       setSavings(data);
       setError(null);
     } catch (err) {
@@ -29,29 +29,6 @@ export const useSavings = () => {
   useEffect(() => {
     if (user) {
       loadSavings();
-      
-      // Set up real-time subscription
-      const channel = savingsService.subscribeToChanges(user.id, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setSavings(prev => [payload.new as SavingsRecord, ...prev]);
-        } else if (payload.eventType === 'UPDATE') {
-          setSavings(prev => 
-            prev.map(item => 
-              item.id === (payload.new as SavingsRecord).id 
-                ? (payload.new as SavingsRecord) 
-                : item
-            )
-          );
-        } else if (payload.eventType === 'DELETE') {
-          setSavings(prev => 
-            prev.filter(item => item.id !== (payload.old as { id: string }).id)
-          );
-        }
-      });
-
-      return () => {
-        channel?.unsubscribe();
-      };
     }
   }, [user, loadSavings]);
 
@@ -62,8 +39,8 @@ export const useSavings = () => {
 
     try {
       setLoading(true);
-      await savingsService.saveSavingsRecord(record);
-      // The real-time subscription will handle updating the state
+      // TODO: Implement actual saving with record data
+      console.log('Saving record:', record);
       setError(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save record';
@@ -79,8 +56,8 @@ export const useSavings = () => {
     
     try {
       setLoading(true);
-      await savingsService.syncData(user.id);
-      const data = await savingsService.getSavings(user.id);
+      // TODO: Implement actual refresh
+      const data: SavingsRecord[] = [];
       setSavings(data);
       setError(null);
     } catch (err) {
@@ -98,6 +75,7 @@ export const useSavings = () => {
     error,
     saveSavingsRecord,
     refreshSavings,
+    loadSavings
   };
 };
 

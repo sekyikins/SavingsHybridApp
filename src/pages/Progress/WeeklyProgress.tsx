@@ -37,7 +37,7 @@ const WeeklyProgress: React.FC<WeeklyProgressProps> = ({ initialDate = new Date(
   const [showDatePicker, setShowDatePicker] = useState(false);
   const { getTransactionsInRange } = useTransactions();
   const { savingsGoals, updateSavingsGoals } = useSettings();
-  const [editingTarget, setEditingTarget] = useState<number>(savingsGoals.weeklyGoal);
+  const [editingTarget, setEditingTarget] = useState<number>(savingsGoals?.weeklyGoal || 250);
   const [isEditing, setIsEditing] = useState(false);
 
   const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
@@ -55,9 +55,10 @@ const WeeklyProgress: React.FC<WeeklyProgressProps> = ({ initialDate = new Date(
   const weeklyTotal = deposits - withdrawals;
   const daysPassed = weekDays.filter(day => day <= new Date() && day <= weekEnd).length;
   const dailyAverage = daysPassed > 0 ? deposits / daysPassed : 0; // Daily average based on deposits only
-  const remaining = Math.max(0, savingsGoals.weeklyGoal - deposits); // Remaining based on deposits only for savings goal
-  const progress = savingsGoals.weeklyGoal > 0 ? Math.min(1, deposits / savingsGoals.weeklyGoal) : 0; // Progress based on deposits only
-  const isTargetReached = deposits >= savingsGoals.weeklyGoal;
+  const weeklyGoal = savingsGoals?.weeklyGoal || 250;
+  const remaining = Math.max(0, weeklyGoal - deposits); // Remaining based on deposits only for savings goal
+  const progress = weeklyGoal > 0 ? Math.min(1, deposits / weeklyGoal) : 0; // Progress based on deposits only
+  const isTargetReached = deposits >= weeklyGoal;
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentWeekStart);
@@ -113,7 +114,7 @@ const WeeklyProgress: React.FC<WeeklyProgressProps> = ({ initialDate = new Date(
               {isTargetReached ? (
                 <IonText color="success">
                   Target Reached!<br />
-                  <small>+${(weeklyTotal - savingsGoals.weeklyGoal).toFixed(2)} extra</small>
+                  <small>+${(weeklyTotal - weeklyGoal).toFixed(2)} extra</small>
                 </IonText>
               ) : (
                 `${(progress * 100).toFixed(1)}% of Weekly Goal`
@@ -128,7 +129,7 @@ const WeeklyProgress: React.FC<WeeklyProgressProps> = ({ initialDate = new Date(
             />
             
             <IonText className="progress-text">
-              {savingsGoals.weeklyGoal > 0 ? `${Math.round((weeklyTotal / savingsGoals.weeklyGoal) * 100)}%` : '0%'} of weekly goal
+              {weeklyGoal > 0 ? `${Math.round((weeklyTotal / weeklyGoal) * 100)}%` : '0%'} of weekly goal
             </IonText>
             
             <div className="progress-stats">
@@ -151,8 +152,8 @@ const WeeklyProgress: React.FC<WeeklyProgressProps> = ({ initialDate = new Date(
                     <IonButton size="small" onClick={saveTarget}>Save</IonButton>
                   </div>
                 ) : (
-                  <IonText className="weekly-target" onClick={() => setIsEditing(true)}>
-                    Weekly Target: {savingsGoals.weeklyGoal.toFixed(2)}
+                  <IonText className="editable" onClick={() => setIsEditing(true)}>
+                    ${weeklyGoal.toFixed(2)}
                   </IonText>
                 )}
               </div>

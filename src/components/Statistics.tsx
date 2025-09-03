@@ -1,4 +1,3 @@
-import React from 'react';
 import { formatCurrency } from '../utils/currency';
 import { formatDate, getWeekStart, getWeekEnd } from '../utils/dateUtils';
 import { SavingsRecord } from '../types/supabase';

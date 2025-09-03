@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react';
-import { IonApp, setupIonicReact, isPlatform, IonTabs, IonRouterOutlet, IonTabBar, IonTabButton, IonIcon, IonLabel } from '@ionic/react';
-import { Route, Redirect, useLocation, RouteProps, RouteComponentProps } from 'react-router-dom';
+import { IonApp, setupIonicReact, isPlatform, IonTabs, IonRouterOutlet, IonTabBar, IonTabButton, IonIcon, IonLabel, IonPage, IonContent } from '@ionic/react';
+import { Route, Redirect, useLocation } from 'react-router-dom';
 import { StatusBar } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { IonReactRouter } from '@ionic/react-router';
 import { home, calendar, settings } from 'ionicons/icons';
 import { useTheme, ThemeProvider } from './contexts/ThemeContext';
+import { useAuth } from './hooks/useAuth';
 import { SettingsProvider } from './contexts/SettingsContext';
+
 
 declare global {
   interface Window {
@@ -42,6 +44,7 @@ import EditOverall from './pages/EditOverall';
 import AddTransact from './pages/AddTransact';
 import MonthlyProgress from './pages/Progress/MonthlyProgress';
 import WeeklyProgress from './pages/Progress/WeeklyProgress';
+import Activities from './pages/Activities';
 import PrivacyPolicy from './pages/Legal/PrivacyPolicy';
 import TermsOfService from './pages/Legal/TermsOfService';
 import HelpAndSupport from './pages/HelpAndSupport';
@@ -56,33 +59,51 @@ setupIonicReact({
   _forceStatusbarPadding: true,
 });
 
-// For status bar styling, use the StatusBar API
-StatusBar.setStyle({ style: 'DARK' });  // or 'LIGHT'
-StatusBar.setBackgroundColor({ color: '#00000000' }); // For transparent
-
-// Private route component
-interface PrivateRouteProps extends RouteProps {
-  component: React.ComponentType<RouteComponentProps>;
+// For status bar styling, use the StatusBar API (only on mobile)
+if (isPlatform('capacitor')) {
+  StatusBar.setStyle({ style: 'DARK' }).catch(e => console.warn('StatusBar setStyle failed:', e));
+  StatusBar.setBackgroundColor({ color: '#00000000' }).catch(e => console.warn('StatusBar setBackgroundColor failed:', e));
 }
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ component: Component, ...rest }) => {
-  const isAuthenticated = true; // Replace with your auth logic
+// Protected Route component
+interface ProtectedRouteProps {
+  component: React.ComponentType<any>;
+  exact?: boolean;
+  path: string;
+}
 
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ component: Component, ...rest }) => {
+  const { user, loading } = useAuth();
+  
   return (
     <Route
       {...rest}
-      render={(props) =>
-        isAuthenticated ? (
-          <Component {...props} />
-        ) : (
-          <Redirect
-            to={{
-              pathname: '/auth',
-              state: { from: props.location }
-            }}
-          />
-        )
-      }
+      render={(props) => {
+        console.log('ProtectedRoute render:', { 
+          loading, 
+          hasUser: !!user, 
+          pathname: props.location.pathname,
+          userEmail: user?.email 
+        });
+        
+        if (loading) {
+          return (
+            <IonPage>
+              <IonContent className="ion-padding">
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <div>Loading...</div>
+                </div>
+              </IonContent>
+            </IonPage>
+          );
+        }
+        
+        if (!user) {
+          return <Redirect to={{ pathname: '/auth', state: { from: props.location } }} />;
+        }
+        
+        return <Component {...props} />;
+      }}
     />
   );
 };
@@ -101,7 +122,7 @@ const AppRoutes: React.FC = () => {
             style: darkMode ? 'DARK' : 'LIGHT'
           });
         } catch (e) {
-          console.warn('StatusBar could not be styled', e);
+          // Silently ignore StatusBar errors on web
         }
       }
     };
@@ -127,20 +148,21 @@ const AppRoutes: React.FC = () => {
   return (
     <IonTabs>
       <IonRouterOutlet>
-        <Route exact path="/home" component={Home} />
-        <Route exact path="/calendar" component={CalendarPage} />
-        <Route path="/settings" component={SettingsPage} />
-        <Route path="/privacy-policy" component={PrivacyPolicy} />
-        <Route path="/terms-of-service" component={TermsOfService} />
-        <Route exact path="/progress/monthly" component={MonthlyProgress} />
-        <Route exact path="/progress/weekly" component={WeeklyProgress} />
+        <ProtectedRoute exact path="/home" component={Home} />
+        <ProtectedRoute exact path="/calendar" component={CalendarPage} />
+        <ProtectedRoute path="/settings" component={SettingsPage} />
+        <ProtectedRoute path="/privacy-policy" component={PrivacyPolicy} />
+        <ProtectedRoute path="/terms-of-service" component={TermsOfService} />
+        <ProtectedRoute exact path="/progress/monthly" component={MonthlyProgress} />
+        <ProtectedRoute exact path="/progress/weekly" component={WeeklyProgress} />
+        <ProtectedRoute exact path="/activities" component={Activities} />
         <Route path="/auth" component={AuthPage} />
-        <Route exact path="/edit-transaction/:date" component={AddTransact} />
-        <Route exact path="/edit-overall/:date" component={EditOverall} />
-        <Route exact path="/help-support" component={HelpAndSupport} />
-        <Route exact path="/report-bug" component={BugReport} />
-        <Route exact path="/feedback" component={Feedback} />
-        <Route exact path="/emergency" component={EmergencySupport} />
+        <ProtectedRoute exact path="/edit-transaction/:date" component={AddTransact} />
+        <ProtectedRoute exact path="/edit-overall/:date" component={EditOverall} />
+        <ProtectedRoute exact path="/help-support" component={HelpAndSupport} />
+        <ProtectedRoute exact path="/report-bug" component={BugReport} />
+        <ProtectedRoute exact path="/feedback" component={Feedback} />
+        <ProtectedRoute exact path="/emergency" component={EmergencySupport} />
         <Route exact path="/">
           <Redirect to="/home" />
         </Route>
@@ -165,28 +187,29 @@ const AppRoutes: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  // Use the theme context
-  const { darkMode } = useTheme();
-  
   useEffect(() => {
     // Set up status bar
     const setupStatusBar = async () => {
       if (isPlatform('hybrid')) {
-        await StatusBar.setStyle({ 
-          style: darkMode ? 'DARK' : 'LIGHT'
-        });
-        await StatusBar.setBackgroundColor({ 
-          color: darkMode ? '#1a1a1a' : '#f8f9fa' 
-        });
-        await SplashScreen.hide();
-        
-        // Apply theme class to document body
-        document.body.classList.toggle('dark', darkMode);
+        try {
+          await StatusBar.setStyle({ 
+            style: 'DARK'
+          });
+          await StatusBar.setBackgroundColor({ 
+            color: '#1a1a1a'
+          });
+          await SplashScreen.hide();
+        } catch (e) {
+          // Silently ignore StatusBar/SplashScreen errors
+        }
+      } else {
+        // Hide splash screen on web after a delay
+        setTimeout(() => SplashScreen.hide().catch(() => {}), 100);
       }
     };
     
     setupStatusBar();
-  }, [darkMode]);
+  }, []);
 
   return (
     <IonApp>

@@ -33,6 +33,7 @@ import {
 import { useHistory, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../contexts/ThemeContext';
+import { logger } from '../../utils/debugLogger';
 import './Settings.css';
 
 interface UserProfile {
@@ -103,18 +104,32 @@ const SettingsPage: React.FC = () => {
   const [presentToast] = useIonToast();
   const { signOut } = useAuth();
   
-  // Get user from location state or use default
-  const [user] = useState<UserProfile>(() => {
-    return location.state?.user || {
-      name: 'John Doe',
-      email: 'john.doe@example.com',
-      initials: 'JD'
-    };
-  });
+  // Get user from auth context and fetch additional profile data
+  const { user: authUser, loading: authLoading } = useAuth();
   
-  // Theme state
+  // Component mount logging
+  React.useEffect(() => {
+    logger.componentMount('SettingsPage', { 
+      hasAuthUser: !!authUser, 
+      authLoading, 
+      userEmail: authUser?.email 
+    });
+    
+    return () => {
+      logger.componentUnmount('SettingsPage');
+    };
+  }, []);
+  
+  const [user, setUser] = useState<UserProfile>({
+    name: 'Loading...',
+    email: authUser?.email || '',
+    initials: ''
+  });
+
+  // Theme state - ALWAYS call this hook
   const { darkMode, toggleDarkMode } = useTheme();
   
+  // Settings state - ALWAYS call this hook
   const [settings, setSettings] = useState<Omit<Settings, 'darkMode'>>({
     notifications: true,
     emailNotifications: true,
@@ -126,6 +141,123 @@ const SettingsPage: React.FC = () => {
       defaultView: 'month'
     }
   });
+
+  // Load user profile data from Supabase - ALWAYS call this effect
+  React.useEffect(() => {
+    const loadUserProfile = async () => {
+      logger.auth('Loading user profile in Settings', { 
+        hasAuthUser: !!authUser, 
+        authLoading, 
+        userEmail: authUser?.email 
+      });
+      
+      if (!authUser) {
+        logger.auth('No auth user found, skipping profile load');
+        return;
+      }
+      
+      try {
+        // Get user metadata from auth
+        const firstName = authUser.user_metadata?.firstName || '';
+        const lastName = authUser.user_metadata?.lastName || '';
+        const fullName = authUser.user_metadata?.full_name || `${firstName} ${lastName}`.trim();
+        
+        const displayName = fullName || authUser.email?.split('@')[0] || 'User';
+        const initials = firstName && lastName 
+          ? `${firstName[0]}${lastName[0]}`.toUpperCase()
+          : displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+        
+        setUser({
+          name: displayName,
+          email: authUser.email || '',
+          initials: initials
+        });
+        
+        logger.auth('User profile loaded successfully', { 
+          displayName, 
+          initials, 
+          email: authUser.email 
+        });
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+        // Fallback to basic user info
+        setUser({
+          name: authUser.email?.split('@')[0] || 'User',
+          email: authUser.email || '',
+          initials: (authUser.email?.split('@')[0] || 'U').slice(0, 2).toUpperCase()
+        });
+      }
+    };
+    
+    loadUserProfile();
+  }, [authUser, authLoading]);
+
+  // Debug current state
+  logger.auth('Settings page render state', { 
+    authLoading, 
+    hasAuthUser: !!authUser, 
+    userEmail: authUser?.email,
+    pathname: location.pathname
+  });
+
+  // Show loading state while auth is loading
+  if (authLoading) {
+    logger.auth('Settings page showing loading state', { authLoading });
+    return (
+      <IonPage>
+        <IonHeader className="ion-no-border">
+          <IonToolbar>
+            <IonTitle style={{ textAlign: 'center', width: '100%' }}>Settings</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent fullscreen>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            height: '100%',
+            flexDirection: 'column',
+            gap: '16px'
+          }}>
+            <div>Loading your settings...</div>
+          </div>
+        </IonContent>
+      </IonPage>
+    );
+  }
+
+  // Redirect to auth if no user after loading is complete
+  if (!authLoading && !authUser) {
+    logger.auth('No authenticated user, redirecting to auth');
+    history.replace('/auth');
+    return null;
+  }
+
+  // Additional safety check
+  if (!authUser) {
+    logger.auth('AuthUser is null, showing fallback');
+    return (
+      <IonPage>
+        <IonHeader className="ion-no-border">
+          <IonToolbar>
+            <IonTitle style={{ textAlign: 'center', width: '100%' }}>Settings</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent fullscreen>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            height: '100%',
+            flexDirection: 'column',
+            gap: '16px'
+          }}>
+            <div>Authentication required...</div>
+          </div>
+        </IonContent>
+      </IonPage>
+    );
+  }
 
   const toggleSetting = (key: keyof Settings, subKey?: keyof Settings['calendar']) => {
     if (key === 'darkMode') {
@@ -248,6 +380,12 @@ const SettingsPage: React.FC = () => {
       ]
     });
   };
+
+  logger.auth('Settings page rendering main content', { 
+    hasUser: !!user, 
+    userName: user.name,
+    userEmail: user.email 
+  });
 
   return (
     <IonPage>

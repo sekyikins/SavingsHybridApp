@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../config/supabase';
 import { databaseService } from '../services/databaseService';
+import { logger } from '../utils/debugLogger';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -39,7 +40,7 @@ export function useAuth() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (_event, session) => {
         if (mounted) {
           clearTimeout(timeoutId);
           setSession(session);
@@ -58,7 +59,8 @@ export function useAuth() {
 
   type AuthError = { message: string } | null;
 
-  const signUp = async (email: string, password: string, username?: string) => {
+  const signUp = async (email: string, password: string, username?: string, userData?: { firstName: string, lastName: string }) => {
+    logger.auth('Starting signup process', { email, hasUsername: !!username });
     try {
       // 1. First check if we're rate limited
       const rateLimitKey = `rate_limit_${email}`;
@@ -82,18 +84,29 @@ export function useAuth() {
       localStorage.setItem(rateLimitKey, Date.now().toString());
 
       // 3. Sign up the user with Supabase Auth
+      logger.supabase('Calling supabase.auth.signUp', { email });
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             username: username || '',
+            firstName: userData?.firstName || '',
+            lastName: userData?.lastName || '',
+            full_name: username || ''
           },
           emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       });
+      
+      logger.supabase('Signup response received', { 
+        hasUser: !!data?.user, 
+        hasError: !!error,
+        errorMessage: error?.message 
+      });
 
       if (error) {
+        logger.error('Signup error from Supabase', error, { email, errorCode: error.status });
         if (error.status === 429) {
           return {
             data: null,
@@ -117,15 +130,54 @@ export function useAuth() {
         }
       }
 
+      // Log signup success details for debugging
+      logger.auth('Signup completed', {
+        hasUser: !!data.user,
+        hasSession: !!data.session,
+        userEmail: data.user?.email,
+        userConfirmed: data.user?.email_confirmed_at !== null
+      });
+      
+      // If email confirmation is disabled, user should have a session immediately
+      if (data.user && !data.session) {
+        logger.auth('User created but no session - email confirmation may be required', {
+          userEmail: data.user.email,
+          emailConfirmed: data.user.email_confirmed_at
+        });
+        return {
+          data,
+          error: {
+            message: 'Account created successfully! You can now sign in with your credentials.'
+          }
+        };
+      }
+      
       return { 
         data, 
         error: null 
       };
     } catch (error) {
-      console.error('Signup error:', error);
-      const errorMessage = error instanceof Error 
+      let errorMessage = error instanceof Error 
         ? error.message 
         : 'An unknown error occurred during signup';
+      
+      // Provide user-friendly error messages for signup
+      if (errorMessage.includes('User already registered')) {
+        errorMessage = 'An account with this email already exists. Please sign in instead.';
+      } else if (errorMessage.includes('Password should be at least')) {
+        errorMessage = 'Password must be at least 6 characters long.';
+      } else if (errorMessage.includes('Invalid email')) {
+        errorMessage = 'Please enter a valid email address.';
+      } else if (errorMessage.includes('too many requests') || errorMessage.includes('rate limit')) {
+        errorMessage = 'Too many signup attempts. Please wait a few minutes before trying again.';
+      }
+      
+      logger.error('Signup failed with exception', error as Error, { 
+        email, 
+        errorMessage,
+        originalError: error instanceof Error ? error.message : 'Unknown error',
+        isRateLimited: errorMessage.includes('too many requests') || errorMessage.includes('rate limit')
+      });
       
       return { 
         data: null, 
@@ -138,10 +190,22 @@ export function useAuth() {
   };
 
   const signIn = async (email: string, password: string) => {
+    logger.auth('Starting signin process', { email });
     try {
+      logger.supabase('Calling supabase.auth.signInWithPassword', { email });
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+      });
+      
+      logger.supabase('Signin response received', { 
+        hasUser: !!data?.user, 
+        hasSession: !!data?.session,
+        hasError: !!error,
+        errorMessage: error?.message,
+        userEmail: data?.user?.email,
+        userConfirmed: data?.user?.email_confirmed_at,
+        errorCode: error?.status
       });
 
       if (data.user && !error) {
@@ -149,13 +213,45 @@ export function useAuth() {
         await databaseService.initializeUserData(data.user.id, email);
       }
 
-      return { data, error: error ? { message: error.message } : null };
+      if (error) {
+        logger.error('Signin error from Supabase', error, { email });
+      } else {
+        logger.auth('Signin successful', { userId: data?.user?.id });
+      }
+      
+      // Provide user-friendly error messages
+      if (error) {
+        let userFriendlyMessage = error.message;
+        
+        if (error.message.includes('Email not confirmed')) {
+          userFriendlyMessage = 'Please check your email and click the confirmation link before signing in.';
+        } else if (error.message.includes('Invalid login credentials')) {
+          userFriendlyMessage = 'Invalid email or password. If you just signed up, please check your email for a confirmation link first.';
+        } else if (error.message.includes('Too many requests')) {
+          userFriendlyMessage = 'Too many login attempts. Please wait a few minutes before trying again.';
+        }
+        
+        return { data, error: { message: userFriendlyMessage } };
+      }
+      
+      return { data, error: null };
     } catch (error) {
+      logger.error('Signin failed with exception', error as Error, { email });
+      
+      let errorMessage = 'Failed to sign in';
+      if (error instanceof Error) {
+        if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Please check your email and click the confirmation link before signing in.';
+        } else if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       return { 
         data: null, 
-        error: { 
-          message: error instanceof Error ? error.message : 'Failed to sign in' 
-        } 
+        error: { message: errorMessage } 
       };
     }
   };

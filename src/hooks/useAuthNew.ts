@@ -11,8 +11,7 @@ export const useAuth = () => {
   // Check for existing session on mount
   useEffect(() => {
     // Check active sessions and set the user
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);

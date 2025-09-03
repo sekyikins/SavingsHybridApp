@@ -1,4 +1,4 @@
-import React from 'react';
+// import { useState, useEffect } from 'react';
 import { formatDate, getWeekStart, isToday } from '../utils/dateUtils';
 import { SavingsRecord } from '../types/supabase';
 import { useSettings } from './Settings';

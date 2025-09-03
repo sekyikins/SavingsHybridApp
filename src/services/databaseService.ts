@@ -237,7 +237,7 @@ export const databaseService = {
   async initializeUserData(userId: string, email: string): Promise<{ success: boolean; error?: Error }> {
     try {
       // Create user profile first
-      const { data: profileData, error: profileError } = await supabase
+      const { data: _profileData, error: profileError } = await supabase
         .from('user_profiles')
         .insert({
           user_id: userId,
@@ -257,10 +257,9 @@ export const databaseService = {
         .from('user_settings')
         .insert({
           user_id: userId,
-          currency: 'USD',
-          daily_goal: 10.0,
-          starting_day_of_week: 'SUN',
-          theme: 'system'
+          currency: 'GHS',
+          currency_symbol: '₵',
+          starting_day_of_week: 'MON'
         })
         .select()
         .single();

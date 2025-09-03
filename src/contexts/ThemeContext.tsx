@@ -30,7 +30,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       (prefersDark.matches ? 'dark' : 'light');
     
     const initialDarkMode = initialTheme === 'dark';
-    console.log('Initializing theme:', initialTheme);
     
     // Update state and apply theme
     setDarkMode(initialDarkMode);
@@ -63,7 +62,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!savedTheme) {
       const handleSystemThemeChange = (e: MediaQueryListEvent) => {
         const isDark = e.matches;
-        console.log('System theme changed to:', isDark ? 'dark' : 'light');
         setDarkMode(isDark);
         applyTheme(isDark);
       };
@@ -77,7 +75,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const toggleDarkMode = () => {
     const newDarkMode = !darkMode;
-    console.log('Toggling theme to:', newDarkMode ? 'dark' : 'light');
     
     // Update state
     setDarkMode(newDarkMode);

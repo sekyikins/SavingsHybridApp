@@ -1,0 +1,296 @@
+import React, { useState, useMemo } from 'react';
+import {
+  IonContent,
+  IonHeader,
+  IonPage,
+  IonTitle,
+  IonToolbar,
+  IonButtons,
+  IonBackButton,
+  IonList,
+  IonItem,
+  IonLabel,
+  IonIcon,
+  IonText,
+  IonButton,
+  IonDatetime,
+  IonModal,
+  IonSearchbar,
+  IonSegment,
+  IonSegmentButton,
+  IonChip,
+  IonFab,
+  IonFabButton,
+} from '@ionic/react';
+import {
+  calendarOutline,
+  filterOutline,
+  trendingUpOutline,
+  trendingDownOutline,
+  timeOutline,
+  cashOutline,
+} from 'ionicons/icons';
+import { format, isToday, isYesterday, parseISO, startOfDay, endOfDay } from 'date-fns';
+import useTransactions from '../../hooks/useTransactions';
+import { Transaction } from '../../types';
+import './Activities.css';
+
+const Activities: React.FC = () => {
+  const { transactions } = useTransactions();
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [searchText, setSearchText] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'deposit' | 'withdrawal'>('all');
+
+  // Sort transactions by date (newest first) and filter
+  const filteredTransactions = useMemo(() => {
+    let filtered = [...transactions];
+
+    // Filter by type
+    if (filterType !== 'all') {
+      filtered = filtered.filter(t => t.type === filterType);
+    }
+
+    // Filter by search text (amount or description)
+    if (searchText) {
+      filtered = filtered.filter(t => 
+        t.amount.toString().includes(searchText) ||
+        (t.description && t.description.toLowerCase().includes(searchText.toLowerCase()))
+      );
+    }
+
+    // Filter by selected date
+    if (selectedDate) {
+      const targetDate = parseISO(selectedDate);
+      const startOfTargetDay = startOfDay(targetDate);
+      const endOfTargetDay = endOfDay(targetDate);
+      
+      filtered = filtered.filter(t => {
+        const transactionDate = new Date(t.date);
+        return transactionDate >= startOfTargetDay && transactionDate <= endOfTargetDay;
+      });
+    }
+
+    // Sort by date (newest first)
+    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [transactions, filterType, searchText, selectedDate]);
+
+  // Group transactions by date
+  const groupedTransactions = useMemo(() => {
+    const groups: { [key: string]: Transaction[] } = {};
+    
+    filteredTransactions.forEach(transaction => {
+      const dateKey = format(new Date(transaction.date), 'yyyy-MM-dd');
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(transaction);
+    });
+
+    return groups;
+  }, [filteredTransactions]);
+
+  const handleDateChange = (e: CustomEvent) => {
+    setSelectedDate(e.detail.value);
+    setShowDatePicker(false);
+  };
+
+  const clearDateFilter = () => {
+    setSelectedDate(null);
+  };
+
+  const getDateLabel = (dateString: string) => {
+    const date = parseISO(dateString);
+    if (isToday(date)) return 'Today';
+    if (isYesterday(date)) return 'Yesterday';
+    return format(date, 'EEEE, MMM d, yyyy');
+  };
+
+  const getTotalForDate = (transactions: Transaction[]) => {
+    return transactions.reduce((sum, t) => {
+      return t.type === 'deposit' ? sum + t.amount : sum - t.amount;
+    }, 0);
+  };
+
+  return (
+    <IonPage>
+      <IonHeader>
+        <IonToolbar>
+          <IonButtons slot="start">
+            <IonBackButton defaultHref="/home" />
+          </IonButtons>
+          <IonTitle>All Activities</IonTitle>
+          <IonButtons slot="end">
+            <IonButton fill="clear" onClick={() => setShowDatePicker(true)}>
+              <IonIcon icon={calendarOutline} />
+            </IonButton>
+          </IonButtons>
+        </IonToolbar>
+      </IonHeader>
+
+      <IonContent className="ion-padding">
+        {/* Search and Filter Controls */}
+        <div className="controls-section">
+          <IonSearchbar
+            value={searchText}
+            onIonInput={(e) => setSearchText(e.detail.value!)}
+            placeholder="Search by amount or description..."
+            showClearButton="focus"
+          />
+
+          <div className="filter-controls">
+            <IonSegment
+              value={filterType}
+              onIonChange={(e) => setFilterType(e.detail.value as any)}
+            >
+              <IonSegmentButton value="all">
+                <IonLabel>All</IonLabel>
+              </IonSegmentButton>
+              <IonSegmentButton value="deposit">
+                <IonLabel>Deposits</IonLabel>
+              </IonSegmentButton>
+              <IonSegmentButton value="withdrawal">
+                <IonLabel>Withdrawals</IonLabel>
+              </IonSegmentButton>
+            </IonSegment>
+
+            {selectedDate && (
+              <IonChip onClick={clearDateFilter}>
+                <IonIcon icon={calendarOutline} />
+                <IonLabel>{format(parseISO(selectedDate), 'MMM d, yyyy')}</IonLabel>
+              </IonChip>
+            )}
+          </div>
+        </div>
+
+        {/* Summary Stats */}
+        <div className="summary-stats">
+          <div className="stat-card">
+            <IonText color="medium">Total Transactions</IonText>
+            <IonText className="stat-number">{filteredTransactions.length}</IonText>
+          </div>
+          <div className="stat-card">
+            <IonText color="medium">Net Amount</IonText>
+            <IonText 
+              className="stat-number"
+              color={filteredTransactions.reduce((sum, t) => 
+                t.type === 'deposit' ? sum + t.amount : sum - t.amount, 0) >= 0 ? 'success' : 'danger'}
+            >
+              ${Math.abs(filteredTransactions.reduce((sum, t) => 
+                t.type === 'deposit' ? sum + t.amount : sum - t.amount, 0)).toFixed(2)}
+            </IonText>
+          </div>
+        </div>
+
+        {/* Transactions List */}
+        {Object.keys(groupedTransactions).length === 0 ? (
+          <div className="empty-state">
+            <IonIcon icon={cashOutline} size="large" color="medium" />
+            <IonText color="medium">
+              <h3>No transactions found</h3>
+              <p>Try adjusting your search or filter criteria</p>
+            </IonText>
+          </div>
+        ) : (
+          <div className="transactions-container">
+            {Object.entries(groupedTransactions).map(([dateKey, dayTransactions]) => {
+              const dayTotal = getTotalForDate(dayTransactions);
+              
+              return (
+                <div key={dateKey} className="date-group">
+                  <div className="date-header">
+                    <div className="date-info">
+                      <IonText className="date-label">
+                        {getDateLabel(dateKey)}
+                      </IonText>
+                      <IonText color="medium" className="date-full">
+                        {format(parseISO(dateKey), 'MMM d, yyyy')}
+                      </IonText>
+                    </div>
+                    <div className="day-total">
+                      <IonText color={dayTotal >= 0 ? 'success' : 'danger'}>
+                        {dayTotal >= 0 ? '+' : ''}${dayTotal.toFixed(2)}
+                      </IonText>
+                      <IonText color="medium" className="transaction-count">
+                        {dayTransactions.length} transaction{dayTransactions.length !== 1 ? 's' : ''}
+                      </IonText>
+                    </div>
+                  </div>
+
+                  <IonList className="transactions-list">
+                    {dayTransactions.map((transaction, index) => (
+                      <IonItem key={`${transaction.id}-${index}`} className="transaction-item">
+                        <IonIcon
+                          icon={transaction.type === 'deposit' ? trendingUpOutline : trendingDownOutline}
+                          color={transaction.type === 'deposit' ? 'success' : 'danger'}
+                          slot="start"
+                        />
+                        
+                        <IonLabel>
+                          <div className="transaction-main">
+                            <div className="transaction-info">
+                              <h3 className="transaction-type">
+                                {transaction.type === 'deposit' ? 'Deposit' : 'Withdrawal'}
+                              </h3>
+                              {transaction.description && (
+                                <p className="transaction-description">{transaction.description}</p>
+                              )}
+                            </div>
+                            <div className="transaction-amount">
+                              <IonText 
+                                color={transaction.type === 'deposit' ? 'success' : 'danger'}
+                                className="amount-text"
+                              >
+                                {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount.toFixed(2)}
+                              </IonText>
+                            </div>
+                          </div>
+                          <div className="transaction-meta">
+                            <IonIcon icon={timeOutline} />
+                            <IonText color="medium">
+                              {format(new Date(transaction.date), 'h:mm a')}
+                            </IonText>
+                            {transaction.category && (
+                              <>
+                                <span className="meta-separator">•</span>
+                                <IonText color="medium">{transaction.category}</IonText>
+                              </>
+                            )}
+                          </div>
+                        </IonLabel>
+                      </IonItem>
+                    ))}
+                  </IonList>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Date Picker Modal */}
+        <IonModal isOpen={showDatePicker} onDidDismiss={() => setShowDatePicker(false)}>
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Select Date</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setShowDatePicker(false)}>Done</IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+          <IonContent>
+            <IonDatetime
+              presentation="date"
+              onIonChange={handleDateChange}
+              value={selectedDate || new Date().toISOString()}
+              showDefaultButtons
+              doneText="Select"
+              cancelText="Cancel"
+            />
+          </IonContent>
+        </IonModal>
+      </IonContent>
+    </IonPage>
+  );
+};
+
+export default Activities;

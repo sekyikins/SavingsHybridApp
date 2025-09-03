@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { formatDate, isToday } from '../utils/dateUtils';
-import { formatCurrency } from '../utils/currency';
+import { formatDate } from '../utils/dateUtils';
+// import { formatCurrency } from '../utils/currency';
 import { SavingsRecord } from '../types/supabase';
 import { SavingsReminder } from './SavingsReminder';
 import { useSettings } from './Settings';

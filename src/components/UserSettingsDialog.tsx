@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { UsernameDialog } from './UsernameDialog';
 import { EmailDialog } from './EmailDialog';
@@ -109,15 +109,15 @@ export function UserSettingsDialog({
     </div>
   );
 
-  const renderBackButton = () => (
-    <button
-      type="button"
-      onClick={() => setCurrentView('main')}
-      className="text-sm text-blue-600 hover:text-blue-800 mb-4 inline-flex items-center"
-    >
-      ← Back to settings
-    </button>
-  );
+  // const renderBackButton = () => (
+  //   <button
+  //     type="button"
+  //     onClick={() => setCurrentView('main')}
+  //     className="text-sm text-blue-600 hover:text-blue-800 mb-4 inline-flex items-center"
+  //   >
+  //     ← Back to settings
+  //   </button>
+  // );
 
   const renderMainContent = () => (
     <div className="space-y-4">

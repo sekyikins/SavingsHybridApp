@@ -1,8 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 import { Preferences } from '@capacitor/preferences';
+import { logger } from '../utils/debugLogger';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+// Debug Supabase configuration
+logger.supabase('Initializing Supabase client', {
+  hasUrl: !!supabaseUrl,
+  hasKey: !!supabaseAnonKey,
+  urlLength: supabaseUrl.length,
+  keyLength: supabaseAnonKey.length
+});
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  logger.error('Missing Supabase configuration', undefined, {
+    hasUrl: !!supabaseUrl,
+    hasKey: !!supabaseAnonKey,
+    envVars: Object.keys(import.meta.env).filter(key => key.includes('SUPABASE'))
+  });
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

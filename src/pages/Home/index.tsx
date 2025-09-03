@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { 
   IonContent, 
   IonHeader, 
@@ -11,102 +11,133 @@ import {
   IonCard,
   IonCardHeader,
   IonCardTitle,
-  IonCardContent
+  IonCardContent,
+  IonSpinner
 } from '@ionic/react';
 import { eyeOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
-import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
+import { useAuth } from '../../hooks/useAuth';
 import useTransactions from '../../hooks/useTransactions';
 import { useSettings } from '../../contexts/SettingsContext';
+import { dataIntegrationService } from '../../services/dataIntegrationService';
+import { logger } from '../../utils/debugLogger';
 import './Home.css';
 
 const Home: React.FC = () => {
   const history = useHistory();
-  const { transactions } = useTransactions();
+  const { user, loading: authLoading } = useAuth();
+  const { transactions, error } = useTransactions();
   const { savingsGoals } = useSettings();
   const now = new Date();
   
-  console.log('=== DEBUG: Home Component ===');
-  console.log('Current savings goals:', savingsGoals);
-  console.log('Current date:', now.toISOString());
-  console.log('All transactions:', transactions);
+  useEffect(() => {
+    logger.auth('Home component mounted', { 
+      hasUser: !!user, 
+      userId: user?.id,
+      authLoading 
+    });
+  }, [user, authLoading]);
   
-  // Calculate monthly stats
+  useEffect(() => {
+    logger.componentMount('Home', { transactionCount: transactions.length });
+    return () => logger.componentUnmount('Home');
+  }, []);
+  
+  useEffect(() => {
+    if (error) {
+      logger.error('Home page transaction error', error);
+    }
+  }, [transactions, error]);
+
+  // Calculate monthly stats using the centralized service - ALWAYS call this hook
   const monthlyStats = useMemo(() => {
-    const start = startOfMonth(now);
-    const end = endOfMonth(now);
+    const monthStart = dataIntegrationService.getCurrentMonthStart(now);
+    const stats = dataIntegrationService.getMonthlyStats(monthStart, transactions);
     
-    console.log('Monthly date range:', { start, end });
+    // Use localStorage to match MonthlyProgress page
+    const savedTarget = localStorage.getItem('monthlyTarget');
+    const monthlyGoal = savedTarget ? parseFloat(savedTarget) : 4000; // Default target
+    const progress = monthlyGoal > 0 ? Math.min(stats.totalDeposits / monthlyGoal, 1) : 0;
     
-    const monthlyTransactions = transactions.filter(tx => {
-      const txDate = new Date(tx.date);
-      const isInRange = txDate >= start && txDate <= end;
-      console.log(`[Monthly] Transaction ${tx.id} - Date: ${tx.date} (${txDate.toISOString()}), Type: ${tx.type}, Amount: ${tx.amount}, In Range: ${isInRange} (${start.toISOString()} - ${end.toISOString()})`);
-      return isInRange;
+    logger.data('Home monthly stats calculated', {
+      totalDeposits: stats.totalDeposits,
+      totalWithdrawals: stats.totalWithdrawals,
+      progress: progress * 100
     });
     
-    console.log('Monthly transactions:', monthlyTransactions);
-    
-    const deposits = monthlyTransactions
-      .filter(tx => tx.type === 'deposit')
-      .reduce((sum, tx) => sum + tx.amount, 0);
-      
-    const withdrawals = monthlyTransactions
-      .filter(tx => tx.type === 'withdrawal')
-      .reduce((sum, tx) => sum + tx.amount, 0);
-      
-    const monthlyGoal = savingsGoals?.monthlyGoal || 1000;
-    const progress = monthlyGoal > 0 ? Math.min(deposits / monthlyGoal, 1) : 0;
-    
-    console.log('Monthly calculations:', { deposits, withdrawals, monthlyGoal, progress });
-    
     return {
-      totalSaved: deposits - withdrawals,
+      totalSaved: stats.netAmount,
       monthlyGoal,
       progress,
-      dailyAverage: now.getDate() > 0 ? (deposits / now.getDate()) : 0
+      dailyAverage: stats.dailyAverage,
+      deposits: stats.totalDeposits,
+      withdrawals: stats.totalWithdrawals
     };
   }, [transactions, now]);
   
-  // Calculate weekly stats
+  // Calculate weekly stats using data integration service - ALWAYS call this hook
   const weeklyStats = useMemo(() => {
-    const start = startOfWeek(now, { weekStartsOn: 1 });
-    const end = endOfWeek(now, { weekStartsOn: 1 });
+    const weekStart = dataIntegrationService.getCurrentWeekStart(now);
+    const stats = dataIntegrationService.getWeeklyStats(weekStart, transactions);
     
-    console.log('Weekly date range:', { start, end });
+    const weeklyGoal = savingsGoals?.weeklyGoal || 250;
+    const progress = weeklyGoal > 0 ? Math.min(stats.totalDeposits / weeklyGoal, 1) : 0;
     
-    const weeklyTransactions = transactions.filter(tx => {
-      const txDate = new Date(tx.date);
-      const isInRange = txDate >= start && txDate <= end;
-      console.log(`[Weekly] Transaction ${tx.id} - Date: ${tx.date} (${txDate.toISOString()}), Type: ${tx.type}, Amount: ${tx.amount}, In Range: ${isInRange} (${start.toISOString()} - ${end.toISOString()})`);
-      return isInRange;
+    logger.data('Home weekly stats calculated', {
+      totalDeposits: stats.totalDeposits,
+      totalWithdrawals: stats.totalWithdrawals,
+      progress: progress * 100
     });
     
-    console.log('Weekly transactions:', weeklyTransactions);
-    
-    const deposits = weeklyTransactions
-      .filter(tx => tx.type === 'deposit')
-      .reduce((sum, tx) => sum + tx.amount, 0);
-      
-    const withdrawals = weeklyTransactions
-      .filter(tx => tx.type === 'withdrawal')
-      .reduce((sum, tx) => sum + tx.amount, 0);
-      
-    const weeklyGoal = savingsGoals?.weeklyGoal || 250;
-    const progress = weeklyGoal > 0 ? Math.min(deposits / weeklyGoal, 1) : 0;
-    
-    console.log('Weekly calculations:', { deposits, withdrawals, weeklyGoal, progress });
-    
     return {
-      totalSaved: deposits - withdrawals,
+      totalSaved: stats.netAmount,
       weeklyGoal,
       progress,
-      daysPassed: Math.min(
-        Math.ceil((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)),
-        7
-      )
+      daysPassed: stats.daysPassed,
+      deposits: stats.totalDeposits,
+      withdrawals: stats.totalWithdrawals
     };
-  }, [transactions, now]);
+  }, [transactions, now, savingsGoals?.weeklyGoal]);
+
+  // Show loading state while authentication is being determined
+  if (authLoading) {
+    return (
+      <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>Home</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding">
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+            <div style={{ textAlign: 'center' }}>
+              <IonSpinner name="crescent" />
+              <p>Loading your savings data...</p>
+            </div>
+          </div>
+        </IonContent>
+      </IonPage>
+    );
+  }
+
+  // Show error state if no user (shouldn't happen with ProtectedRoute)
+  if (!user) {
+    return (
+      <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>Home</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding">
+          <div style={{ textAlign: 'center', marginTop: '50px' }}>
+            <p>Please sign in to view your savings data.</p>
+            <IonButton onClick={() => history.push('/auth')}>Sign In</IonButton>
+          </div>
+        </IonContent>
+      </IonPage>
+    );
+  }
 
   return (
     <IonPage>

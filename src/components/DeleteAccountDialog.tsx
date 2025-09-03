@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 import { supabase } from '../config/supabase';
 
@@ -12,7 +12,7 @@ interface DeleteAccountDialogProps {
 export function DeleteAccountDialog({ isOpen, onClose, onAccountDeleted }: DeleteAccountDialogProps) {
   const [password, setPassword] = useState('');
   const [confirmationText, setConfirmationText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  // const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<'warning' | 'confirmation' | 'deleting'>('warning');
   const [isDeleting, setIsDeleting] = useState(false);

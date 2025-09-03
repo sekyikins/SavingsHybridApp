@@ -39,7 +39,6 @@ export function useSavings() {
   // Add a safety timeout to prevent infinite loading
   useEffect(() => {
     const timeout = setTimeout(() => {
-      console.log('Safety timeout triggered - forcing loading to false');
       setLoading(false);
       setError('Database connection timeout. Using offline mode.');
     }, 5000); // 5 second safety timeout (faster feedback)
@@ -70,44 +69,6 @@ export function useSavings() {
     }
   }, [user]);
 
-  const saveSavings = useCallback(async (record: SavingsInsert | SavingsUpdate): Promise<SavingsRecord> => {
-    if (!user) throw new Error('User not authenticated');
-
-    console.log('Saving record:', record);
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Ensure user_id is set
-      const recordWithUser = { ...record, user_id: user.id } as SavingsRecord;
-      
-      // Save using database service
-      const savedRecord = await databaseService.saveSavings(recordWithUser);
-      
-      if (!savedRecord) throw new Error('No data returned from save operation');
-
-      // Update local state
-      setSavings(prev => {
-        const exists = prev.some(item => item.id === savedRecord.id);
-        if (exists) {
-          return prev.map(item => item.id === savedRecord.id ? savedRecord : item);
-        } else {
-          return [savedRecord, ...prev].sort((a, b) => 
-            new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
-        }
-      });
-
-      return savedRecord;
-    } catch (error) {
-      console.error('Error in saveSavings:', error);
-      logError('Error saving record', error);
-      setError('Failed to save record');
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [user, setSavings]);
 
   const saveSavingsRecord = useCallback(async (record: SavingsInsert | SavingsUpdate): Promise<boolean> => {
     if (!user) {
@@ -116,7 +77,12 @@ export function useSavings() {
       return false;
     }
 
-    const isUpdate = 'id' in record;
+    // Check if this is an update operation (used for logging)
+    const isUpdate = 'id' in record && record.id;
+    if (isUpdate) {
+      // Update existing record
+    }
+
     setLoading(true);
 
     try {
@@ -148,7 +114,6 @@ export function useSavings() {
         return [savedRow, ...prev];
       });
 
-      console.log('Database save successful and local state synced');
       return true;
     } catch (error) {
       console.error('Error in saveSavingsRecord:', error);
@@ -161,20 +126,16 @@ export function useSavings() {
   }, [user]);
 
   const fetchSavings = useCallback(async (): Promise<SavingsRecord[]> => {
-    console.log('fetchSavings called, user:', user?.id);
     if (!user) {
-      console.log('No user, skipping fetch');
       setSavings([]);
       setLoading(false);
       return [];
     }
 
     try {
-      console.log('Starting to fetch savings for user:', user.id);
       setLoading(true);
       setError(null);
       
-      console.log('Fetching savings from database service...');
       const savingsData = await databaseService.getSavings(user.id);
       if (savingsData === null) {
         console.error('No data returned when fetching savings');
@@ -190,7 +151,6 @@ export function useSavings() {
       
       // Check if it's a timeout or connection error
       if (error instanceof Error && error.message.includes('timeout')) {
-        console.log('Database timeout detected, using fallback mode');
         setError('Database unavailable. Using offline mode.');
         // Set empty savings array to allow app to continue functioning
         setSavings([]);
@@ -214,7 +174,7 @@ export function useSavings() {
     }
 
     let isMounted = true;
-    let refreshInterval: ReturnType<typeof setInterval>;
+    // Set up periodic refresh
 
     const fetchData = async () => {
       if (!isMounted) return;
@@ -279,6 +239,7 @@ export function useSavings() {
     error,
     saveSavings: saveSavingsRecord,
     deleteSavings,
+    fetchSavings,
     refreshSavings,
     setSavings,
     setLoading,

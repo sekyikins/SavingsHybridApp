@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { SavingsRecord } from '../types/supabase';
 
 interface EditModalProps {
