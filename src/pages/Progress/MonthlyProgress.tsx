@@ -38,7 +38,7 @@ import {
   isSameMonth,
   endOfDay,
 } from 'date-fns';
-import { Transaction } from '../../types/mock';
+import { Transaction } from '../../config/supabase';
 import './Progress.css';
 
 interface MonthlyProgressProps {
@@ -79,10 +79,10 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
     const transactions = getTransactionsInRange(monthStart, monthEnd);
     
     const total = transactions.reduce((sum, t) => 
-      sum + (t.type === 'deposit' ? t.amount : 0), 0);
+      sum + (t.transaction_type === 'deposit' ? t.amount : 0), 0);
       
     const withdrawals = transactions.reduce((sum, t) => 
-      sum + (t.type === 'withdrawal' ? Math.abs(t.amount) : 0), 0);
+      sum + (t.transaction_type === 'withdrawal' ? Math.abs(t.amount) : 0), 0);
       
     const daysPassed = monthDays.filter(day => day <= today && day <= monthEnd).length;
     const dailyAvg = daysPassed > 0 ? total / daysPassed : 0;
@@ -246,7 +246,7 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
         <IonList className="transactions-list">
           {monthDays.map((day, index) => {
             const dayTransactions = getTransactionsByDay(day);
-            const dayTotal = dayTransactions.reduce((sum: number, t: Transaction) => sum + (t.type === 'deposit' ? t.amount : -t.amount), 0);
+            const dayTotal = dayTransactions.reduce((sum: number, t: Transaction) => sum + (t.transaction_type === 'deposit' ? t.amount : -t.amount), 0);
             
             return (
               <IonItem key={index} className={isToday(day) ? 'today' : ''}>

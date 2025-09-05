@@ -1,79 +1,113 @@
 import { useState, useEffect, useCallback } from 'react';
 import { isAfter, isBefore } from 'date-fns';
-import dataService from '../services/dataService';
-import { Transaction } from '../types/mock';
+import { databaseService } from '../services/databaseService';
+import { Transaction } from '../config/supabase';
+import { useAuth } from './useAuth';
+import { logger } from '../utils/debugLogger';
 
-type TransactionInput = Omit<Transaction, 'id' | 'createdAt' | 'updatedAt' | 'userId'>;
+type TransactionInput = Omit<Transaction, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'signed_amount'>;
 
 const useTransactions = () => {
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   // Load transactions on mount
   useEffect(() => {
+    if (!user) {
+      setTransactions([]);
+      setIsLoading(false);
+      return;
+    }
+
     const loadTransactions = async () => {
       try {
-        const data = dataService.getTransactions();
-        // Ensure transactions have required fields
-        const processedTransactions = data.map(tx => ({
-          ...tx,
-          userId: tx.userId || 'default-user',
-          createdAt: tx.createdAt || new Date().toISOString(),
-          updatedAt: tx.updatedAt || new Date().toISOString(),
-          category: tx.category || 'Other'
-        }));
-        setTransactions(processedTransactions);
+        logger.data('Loading transactions', { userId: user.id });
+        const data = await databaseService.getTransactions(user.id);
+        setTransactions(data);
+        setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err : new Error('Failed to load transactions'));
+        const error = err instanceof Error ? err : new Error('Failed to load transactions');
+        logger.error('Failed to load transactions', error, { userId: user.id });
+        setError(error);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadTransactions();
-  }, []);
+  }, [user]);
 
   const addTransaction = useCallback(async (transaction: TransactionInput) => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
     try {
-      const newTransaction = dataService.addTransaction(transaction);
-      setTransactions(prev => [...prev, newTransaction]);
+      logger.data('Adding transaction', { type: transaction.transaction_type, amount: transaction.amount });
+      const newTransaction = await databaseService.saveTransaction({
+        ...transaction,
+        user_id: user.id
+      });
+      setTransactions(prev => [newTransaction, ...prev]);
       return newTransaction;
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to add transaction'));
-      throw err;
+      const error = err instanceof Error ? err : new Error('Failed to add transaction');
+      logger.error('Failed to add transaction', error, { transaction });
+      setError(error);
+      throw error;
     }
-  }, []);
+  }, [user]);
 
   const updateTransaction = useCallback(async (id: string, updates: Partial<TransactionInput>) => {
-    try {
-      // In a real implementation, we would call dataService.updateTransaction
-      // For now, we'll just update the local state
-      setTransactions(prev => 
-        prev.map(tx => 
-          tx.id === id ? { ...tx, ...updates, updatedAt: new Date().toISOString() } : tx
-        )
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to update transaction'));
-      throw err;
+    if (!user) {
+      throw new Error('User not authenticated');
     }
-  }, []);
+
+    try {
+      logger.data('Updating transaction', { id, updates });
+      const updatedTransaction = await databaseService.saveTransaction({
+        ...updates,
+        id,
+        user_id: user.id
+      } as Transaction);
+      
+      setTransactions(prev => 
+        prev.map(tx => tx.id === id ? updatedTransaction : tx)
+      );
+      return updatedTransaction;
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to update transaction');
+      logger.error('Failed to update transaction', error, { id, updates });
+      setError(error);
+      throw error;
+    }
+  }, [user]);
 
   const deleteTransaction = useCallback(async (id: string) => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
     try {
-      // In a real implementation, we would call dataService.deleteTransaction
-      // For now, we'll just update the local state
+      logger.data('Deleting transaction', { id });
+      await databaseService.deleteTransaction(id);
       setTransactions(prev => prev.filter(tx => tx.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to delete transaction'));
-      throw err;
+      const error = err instanceof Error ? err : new Error('Failed to delete transaction');
+      logger.error('Failed to delete transaction', error, { id });
+      setError(error);
+      throw error;
     }
-  }, []);
+  }, [user]);
 
   const getTransactionsInRange = useCallback((startDate: Date, endDate: Date): Transaction[] => {
-    return dataService.getTransactionsInRange(startDate, endDate);
-  }, []);
+    return transactions.filter(tx => {
+      const txDate = new Date(tx.transaction_date);
+      return txDate >= startDate && txDate <= endDate;
+    });
+  }, [transactions]);
 
   const getTransaction = useCallback((id: string): Transaction | undefined => {
     return transactions.find(tx => tx.id === id);
@@ -81,7 +115,7 @@ const useTransactions = () => {
 
   const getTotalSavings = useCallback((): number => {
     return transactions.reduce((total, tx) => {
-      return tx.type === 'deposit' 
+      return tx.transaction_type === 'deposit' 
         ? total + tx.amount 
         : total - tx.amount;
     }, 0);
@@ -89,7 +123,7 @@ const useTransactions = () => {
 
   const getRecentTransactions = useCallback((limit: number = 5): Transaction[] => {
     return [...transactions]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime())
       .slice(0, limit);
   }, [transactions]);
 
@@ -99,10 +133,27 @@ const useTransactions = () => {
     futureDate.setDate(today.getDate() + daysAhead);
 
     return transactions.filter(tx => {
-      const txDate = new Date(tx.date);
+      const txDate = new Date(tx.transaction_date);
       return isAfter(txDate, today) && isBefore(txDate, futureDate);
     });
   }, [transactions]);
+
+  const refreshTransactions = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      setIsLoading(true);
+      const data = await databaseService.getTransactions(user.id);
+      setTransactions(data);
+      setError(null);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to refresh transactions');
+      logger.error('Failed to refresh transactions', error, { userId: user.id });
+      setError(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
 
   return {
     transactions,
@@ -116,6 +167,7 @@ const useTransactions = () => {
     getTotalSavings,
     getRecentTransactions,
     getUpcomingTransactions,
+    refreshTransactions,
   };
 };
 

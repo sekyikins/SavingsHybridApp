@@ -242,7 +242,16 @@ const AuthPage: React.FC = () => {
     return (
       <IonPage>
         <IonContent className="auth-container">
-          <IonLoading isOpen={true} message="Loading..." />
+          <IonLoading 
+            isOpen={true} 
+            message="Loading..." 
+            duration={0}
+            backdropDismiss={false}
+            showBackdrop={true}
+            translucent={false}
+            aria-busy="true"
+            aria-label="Loading..."
+          />
         </IonContent>
       </IonPage>
     );
@@ -425,7 +434,14 @@ const AuthPage: React.FC = () => {
           </IonButton>
         </div>
         
-        <IonLoading isOpen={isProcessing} message="Authenticating..." />
+        <IonLoading 
+          isOpen={isProcessing} 
+          message="Authenticating..." 
+          duration={0}
+          backdropDismiss={false}
+          showBackdrop={true}
+          translucent={false}
+        />
         
         <IonAlert
           isOpen={showAlert}

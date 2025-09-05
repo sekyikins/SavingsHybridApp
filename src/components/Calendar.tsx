@@ -1,10 +1,10 @@
-// import { useState, useEffect } from 'react';
 import { formatDate, getWeekStart, isToday } from '../utils/dateUtils';
-import { SavingsRecord } from '../types/supabase';
+import { Transaction } from '../config/supabase';
 import { useSettings } from './Settings';
+import { dataIntegrationService } from '../services/dataIntegrationService';
 
 interface CalendarProps {
-  savings: SavingsRecord[];
+  transactions: Transaction[];
   currentWeekStart: Date;
   onDateClick: (date: string) => void;
   onPrevWeek: () => void;
@@ -13,7 +13,7 @@ interface CalendarProps {
 }
 
 export function Calendar({ 
-  savings, 
+  transactions, 
   currentWeekStart, 
   onDateClick, 
   onPrevWeek, 
@@ -77,8 +77,10 @@ export function Calendar({
           const currentDay = new Date(weekStart);
           currentDay.setDate(weekStart.getDate() + i);
           const dateStr = formatDate(currentDay);
-          const dayRecord = savings.find(record => record.date === dateStr);
+          const dayData = dataIntegrationService.getDayData(dateStr, transactions);
           const isTodayDate = isToday(dateStr);
+          const hasTransactions = dayData.transactionCount > 0;
+          const netAmount = dayData.netAmount;
           
           return (
             <div
@@ -87,22 +89,29 @@ export function Calendar({
               className={`calendar-day p-1 sm:p-3 lg:p-4 text-center rounded-lg cursor-pointer border-2 min-h-[56px] sm:min-h-[72px] lg:min-h-[100px] flex flex-col justify-center ${
                 isTodayDate ? 'border-blue-500' : 'border-transparent'
               } ${
-                dayRecord?.saved 
-                  ? 'bg-green-200 hover:bg-green-300' 
-                  : dayRecord && !dayRecord.saved
-                  ? 'bg-red-200 hover:bg-red-300'
+                hasTransactions
+                  ? netAmount > 0
+                    ? 'bg-green-200 hover:bg-green-300' 
+                    : netAmount < 0
+                    ? 'bg-red-200 hover:bg-red-300'
+                    : 'bg-yellow-200 hover:bg-yellow-300'
                   : 'bg-gray-100 hover:bg-gray-200'
               }`}
             >
               <div className="font-semibold text-base sm:text-lg">{currentDay.getDate()}</div>
-              {dayRecord?.saved && (
+              {hasTransactions && (
                 <div className="text-xs lg:text-sm mt-1 leading-tight text-center w-full">
                   <span className="sm:hidden">
-                    {dayRecord.amount % 1 === 0 ? dayRecord.amount : dayRecord.amount.toFixed(0)}
+                    {Math.abs(netAmount) % 1 === 0 ? Math.abs(netAmount) : Math.abs(netAmount).toFixed(0)}
                   </span>
                   <span className="hidden sm:inline">
-                    {settingsContext?.settings?.currencySymbol || '₵'}{(dayRecord.amount % 1 === 0 ? dayRecord.amount : dayRecord.amount.toFixed(2))}
+                    {settingsContext?.settings?.currencySymbol || '₵'}{Math.abs(netAmount) % 1 === 0 ? Math.abs(netAmount) : Math.abs(netAmount).toFixed(2)}
                   </span>
+                  {dayData.transactionCount > 1 && (
+                    <div className="text-xs opacity-75">
+                      {dayData.transactionCount} txns
+                    </div>
+                  )}
                 </div>
               )}
             </div>

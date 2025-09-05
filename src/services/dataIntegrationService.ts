@@ -5,7 +5,7 @@
  */
 
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
-import { Transaction } from '../types';
+import { Transaction } from '../config/supabase';
 import { logger } from '../utils/debugLogger';
 
 export interface DayData {
@@ -72,22 +72,20 @@ class DataIntegrationService {
     }
 
     // Calculate fresh data
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    const targetDate = new Date(date);
+    const dateStr = targetDate.toISOString().split('T')[0];
 
     const dayTransactions = transactions.filter(tx => {
-      const txDate = new Date(tx.date);
-      return txDate >= startOfDay && txDate <= endOfDay;
+      const txDateStr = new Date(tx.transaction_date).toISOString().split('T')[0];
+      return txDateStr === dateStr;
     });
 
     const deposits = dayTransactions
-      .filter(tx => tx.type === 'deposit')
+      .filter(tx => tx.transaction_type === 'deposit')
       .reduce((sum, tx) => sum + tx.amount, 0);
 
     const withdrawals = dayTransactions
-      .filter(tx => tx.type === 'withdrawal')
+      .filter(tx => tx.transaction_type === 'withdrawal')
       .reduce((sum, tx) => sum + tx.amount, 0);
 
     const dayData: DayData = {
@@ -120,16 +118,16 @@ class DataIntegrationService {
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
     
     const weekTransactions = transactions.filter(tx => {
-      const txDate = new Date(tx.date);
+      const txDate = new Date(tx.transaction_date);
       return txDate >= weekStart && txDate <= weekEnd;
     });
 
     const totalDeposits = weekTransactions
-      .filter(tx => tx.type === 'deposit')
+      .filter(tx => tx.transaction_type === 'deposit')
       .reduce((sum, tx) => sum + tx.amount, 0);
 
     const totalWithdrawals = weekTransactions
-      .filter(tx => tx.type === 'withdrawal')
+      .filter(tx => tx.transaction_type === 'withdrawal')
       .reduce((sum, tx) => sum + tx.amount, 0);
 
     const now = new Date();
@@ -140,7 +138,7 @@ class DataIntegrationService {
 
     // Count days with activity
     const daysWithActivity = new Set(
-      weekTransactions.map(tx => new Date(tx.date).toDateString())
+      weekTransactions.map(tx => new Date(tx.transaction_date).toDateString())
     ).size;
 
     const stats: WeeklyStats = {
@@ -172,16 +170,16 @@ class DataIntegrationService {
     const monthEnd = endOfMonth(monthStart);
     
     const monthTransactions = transactions.filter(tx => {
-      const txDate = new Date(tx.date);
+      const txDate = new Date(tx.transaction_date);
       return txDate >= monthStart && txDate <= monthEnd;
     });
 
     const totalDeposits = monthTransactions
-      .filter(tx => tx.type === 'deposit')
+      .filter(tx => tx.transaction_type === 'deposit')
       .reduce((sum, tx) => sum + tx.amount, 0);
 
     const totalWithdrawals = monthTransactions
-      .filter(tx => tx.type === 'withdrawal')
+      .filter(tx => tx.transaction_type === 'withdrawal')
       .reduce((sum, tx) => sum + tx.amount, 0);
 
     const now = new Date();
@@ -192,7 +190,7 @@ class DataIntegrationService {
 
     // Count days with activity
     const daysWithActivity = new Set(
-      monthTransactions.map(tx => new Date(tx.date).toDateString())
+      monthTransactions.map(tx => new Date(tx.transaction_date).toDateString())
     ).size;
 
     const stats: MonthlyStats = {

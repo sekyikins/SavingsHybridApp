@@ -535,7 +535,7 @@ const CalendarPage: React.FC = () => {
             <>
               <IonButton 
                 expand="block" 
-                onClick={() => history.push('/add-transact')}
+                onClick={() => history.push(`/add-transact?date=${selectedDayData?.date}`)}
                 className="action-button"
               >
                 Add Transact.
@@ -552,7 +552,7 @@ const CalendarPage: React.FC = () => {
           ) : (
             <IonButton 
               expand="block" 
-              onClick={() => history.push('/add-transact')}
+              onClick={() => history.push(`/add-transact?date=${selectedDayData?.date}`)}
               className="action-button"
             >
               Add Transaction

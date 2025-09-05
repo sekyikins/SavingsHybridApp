@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { 
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent, 
   IonButton, IonInput, IonItem, IonLabel, IonButtons, 
-  IonIcon, useIonViewWillEnter 
+  IonIcon, useIonViewWillEnter, useIonToast 
 } from '@ionic/react';
 import { useHistory, useParams } from 'react-router-dom';
 import { chevronBack } from 'ionicons/icons';
 import { useTheme } from '../../contexts/ThemeContext';
+import useTransactions from '../../hooks/useTransactions';
 import './EditOverall.css';
 
 interface RouteParams {
@@ -19,17 +20,69 @@ export default function EditOverall() {
   const [deposits, setDeposits] = useState('');
   const [withdrawals, setWithdrawals] = useState('');
   const { darkMode } = useTheme();
+  const { transactions, addTransaction } = useTransactions();
+  const [present] = useIonToast();
   
-  // Load data for the selected date
+  // Load existing data for the selected date
   useIonViewWillEnter(() => {
-    // TODO: Load existing data for the date if it exists
-    console.log('Loading data for date:', date);
+    if (date) {
+      const dateTransactions = transactions.filter(tx => {
+        const txDate = new Date(tx.date).toISOString().split('T')[0];
+        return txDate === date;
+      });
+      
+      const totalDeposits = dateTransactions
+        .filter(tx => tx.type === 'deposit')
+        .reduce((sum, tx) => sum + tx.amount, 0);
+      
+      const totalWithdrawals = dateTransactions
+        .filter(tx => tx.type === 'withdrawal')
+        .reduce((sum, tx) => sum + tx.amount, 0);
+      
+      setDeposits(totalDeposits.toString());
+      setWithdrawals(totalWithdrawals.toString());
+    }
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Save the changes
-    console.log('Saving data for date:', date, { deposits, withdrawals });
+    
+    if (!deposits && !withdrawals) {
+      present({
+        message: 'Please enter at least one amount',
+        duration: 2000,
+        color: 'warning',
+        position: 'top'
+      });
+      return;
+    }
+
+    // Add new summary transactions
+    if (deposits && Number(deposits) > 0) {
+      addTransaction({
+        amount: Number(deposits),
+        type: 'deposit',
+        date: new Date(date!).toISOString(),
+        description: 'Daily deposit summary'
+      });
+    }
+
+    if (withdrawals && Number(withdrawals) > 0) {
+      addTransaction({
+        amount: Number(withdrawals),
+        type: 'withdrawal',
+        date: new Date(date!).toISOString(),
+        description: 'Daily withdrawal summary'
+      });
+    }
+
+    present({
+      message: 'Daily summary updated successfully',
+      duration: 2000,
+      color: 'success',
+      position: 'top'
+    });
+
     history.goBack();
   };
   

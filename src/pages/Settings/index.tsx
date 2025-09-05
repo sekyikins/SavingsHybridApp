@@ -29,10 +29,14 @@ import {
   cog,
   warning,
   informationCircle,
+  keypad,
+  fingerPrint
 } from 'ionicons/icons';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useBiometrics } from '../../hooks/useBiometrics';
+import { passcodeService } from '../../services/passcodeService';
 import { logger } from '../../utils/debugLogger';
 import './Settings.css';
 
@@ -381,6 +385,82 @@ const SettingsPage: React.FC = () => {
     });
   };
 
+  const handleChangePasscode = async () => {
+    const { present } = useIonAlert();
+    const [showAlert, setShowAlert] = useState(false);
+    const [passcode, setPasscode] = useState('');
+    const [confirmPasscode, setConfirmPasscode] = useState('');
+
+    const handlePasscodeChange = (event: CustomEvent) => {
+      setPasscode(event.detail.value);
+    };
+
+    const handleConfirmPasscodeChange = (event: CustomEvent) => {
+      setConfirmPasscode(event.detail.value);
+    };
+
+    const handleSavePasscode = async () => {
+      if (passcode !== confirmPasscode) {
+        presentToast({
+          message: 'Passcodes do not match',
+          duration: 2000,
+          position: 'top',
+          color: 'danger'
+        });
+        return;
+      }
+
+      try {
+        await passcodeService.setPasscode(passcode);
+        presentToast({
+          message: 'Passcode changed successfully',
+          duration: 2000,
+          position: 'top',
+          color: 'success'
+        });
+      } catch (error) {
+        presentToast({
+          message: 'Failed to change passcode',
+          duration: 2000,
+          position: 'top',
+          color: 'danger'
+        });
+      }
+    };
+
+    setShowAlert(true);
+
+    present({
+      header: 'Change Passcode',
+      inputs: [
+        {
+          name: 'passcode',
+          type: 'password',
+          placeholder: 'Enter new passcode',
+          attributes: {
+            required: true
+          }
+        },
+        {
+          name: 'confirmPasscode',
+          type: 'password',
+          placeholder: 'Confirm new passcode',
+          attributes: {
+            required: true
+          }
+        }
+      ],
+      buttons: [
+        'Cancel',
+        {
+          text: 'Save',
+          handler: handleSavePasscode
+        }
+      ],
+      onWillDismiss: () => setShowAlert(false)
+    });
+  };
+
   logger.auth('Settings page rendering main content', { 
     hasUser: !!user, 
     userName: user.name,
@@ -419,6 +499,31 @@ const SettingsPage: React.FC = () => {
                   <h3>Payment Methods</h3>
                   <IonNote>Add or update payment options</IonNote>
                 </IonLabel>
+              </IonItem>
+            </IonList>
+          </SettingsGroup>
+
+          {/* Security Settings */}
+          <SettingsGroup title="Security" icon={shieldCheckmark} color="warning">
+            <IonList className="settings-section-content">
+              <IonItem button detail={true} className="setting-item" onClick={handleChangePasscode}>
+                <IonIcon icon={keypad} color="warning" slot="start" />
+                <IonLabel>
+                  <h3>Change Passcode</h3>
+                  <IonNote>Update your 6-digit app passcode</IonNote>
+                </IonLabel>
+              </IonItem>
+              <IonItem className="setting-item">
+                <IonIcon icon={fingerPrint} color="warning" slot="start" />
+                <IonLabel>
+                  <h3>Biometric Authentication</h3>
+                  <IonNote>Use fingerprint or face ID</IonNote>
+                </IonLabel>
+                <IonToggle 
+                  slot="end" 
+                  checked={settings.biometricAuth} 
+                  onIonChange={() => toggleSetting('biometricAuth')} 
+                />
               </IonItem>
             </IonList>
           </SettingsGroup>
@@ -462,22 +567,8 @@ const SettingsPage: React.FC = () => {
                   onIonChange={() => toggleSetting('emailNotifications')} 
                 />
               </IonItem>
-              <IonItem className="setting-item">
-                <IonIcon icon={shieldCheckmark} color="primary" slot="start" />
-                <IonLabel>
-                  <h3>Biometric Authentication</h3>
-                  <IonNote>Use fingerprint or face ID</IonNote>
-                </IonLabel>
-                <IonToggle 
-                  slot="end" 
-                  checked={settings.biometricAuth} 
-                  onIonChange={() => toggleSetting('biometricAuth')} 
-                />
-              </IonItem>
             </IonList>
           </SettingsGroup>
-
-          
 
           {/* Support Section */}
           <SettingsGroup title="Support" icon={informationCircle} color="primary">

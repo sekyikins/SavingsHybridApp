@@ -157,7 +157,7 @@ const AppRoutes: React.FC = () => {
         <ProtectedRoute exact path="/progress/weekly" component={WeeklyProgress} />
         <ProtectedRoute exact path="/activities" component={Activities} />
         <Route path="/auth" component={AuthPage} />
-        <ProtectedRoute exact path="/edit-transaction/:date" component={AddTransact} />
+        <ProtectedRoute exact path="/add-transact" component={AddTransact} />
         <ProtectedRoute exact path="/edit-overall/:date" component={EditOverall} />
         <ProtectedRoute exact path="/help-support" component={HelpAndSupport} />
         <ProtectedRoute exact path="/report-bug" component={BugReport} />

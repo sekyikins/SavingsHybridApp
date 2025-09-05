@@ -118,16 +118,18 @@ export function useAuth() {
         throw error;
       }
 
-      // 4. If signup was successful, initialize user data
+      // 4. Initialize user data
       if (data.user) {
         try {
-          await databaseService.initializeUserData(data.user.id, email);
-          // Clear rate limit on successful signup
-          localStorage.removeItem(rateLimitKey);
+          await databaseService.initializeUserData(data.user.id, data.user.email || '');
+          logger.auth('User data initialized successfully', { userId: data.user.id });
         } catch (initError) {
-          console.error('Error initializing user data:', initError);
-          // Don't fail the signup if initialization fails, just log it
+          logger.error('Failed to initialize user data, but signup succeeded', initError as Error, { userId: data.user.id });
+          // Don't fail the signup if initialization fails - user can be initialized later
         }
+        // Clear rate limit on successful signup
+        localStorage.removeItem(rateLimitKey);
+        logger.auth('User created successfully', { userId: data.user.id });
       }
 
       // Log signup success details for debugging
@@ -207,11 +209,6 @@ export function useAuth() {
         userConfirmed: data?.user?.email_confirmed_at,
         errorCode: error?.status
       });
-
-      if (data.user && !error) {
-        // Ensure user data is initialized
-        await databaseService.initializeUserData(data.user.id, email);
-      }
 
       if (error) {
         logger.error('Signin error from Supabase', error, { email });
