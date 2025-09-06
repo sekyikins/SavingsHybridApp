@@ -19,24 +19,25 @@ import {
   IonSegment,
   IonSegmentButton,
   IonChip,
-  IonFab,
-  IonFabButton,
+  IonRefresher,
+  IonRefresherContent,
+  IonSpinner
 } from '@ionic/react';
 import {
   calendarOutline,
-  filterOutline,
   trendingUpOutline,
   trendingDownOutline,
   timeOutline,
   cashOutline,
 } from 'ionicons/icons';
-import { format, isToday, isYesterday, parseISO, startOfDay, endOfDay } from 'date-fns';
+import { format, isToday, isYesterday, parseISO, startOfDay, endOfDay, isValid } from 'date-fns';
 import useTransactions from '../../hooks/useTransactions';
-import { Transaction } from '../../types';
+import { Transaction } from '../../config/supabase';
+import { logger } from '../../utils/debugLogger';
 import './Activities.css';
 
 const Activities: React.FC = () => {
-  const { transactions } = useTransactions();
+  const { transactions, refreshTransactions, isLoading } = useTransactions();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
@@ -48,7 +49,7 @@ const Activities: React.FC = () => {
 
     // Filter by type
     if (filterType !== 'all') {
-      filtered = filtered.filter(t => t.type === filterType);
+      filtered = filtered.filter(t => t.transaction_type === filterType);
     }
 
     // Filter by search text (amount or description)
@@ -66,13 +67,13 @@ const Activities: React.FC = () => {
       const endOfTargetDay = endOfDay(targetDate);
       
       filtered = filtered.filter(t => {
-        const transactionDate = new Date(t.date);
+        const transactionDate = new Date(t.transaction_date);
         return transactionDate >= startOfTargetDay && transactionDate <= endOfTargetDay;
       });
     }
 
     // Sort by date (newest first)
-    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return filtered.sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime());
   }, [transactions, filterType, searchText, selectedDate]);
 
   // Group transactions by date
@@ -80,7 +81,7 @@ const Activities: React.FC = () => {
     const groups: { [key: string]: Transaction[] } = {};
     
     filteredTransactions.forEach(transaction => {
-      const dateKey = format(new Date(transaction.date), 'yyyy-MM-dd');
+      const dateKey = format(new Date(transaction.transaction_date), 'yyyy-MM-dd');
       if (!groups[dateKey]) {
         groups[dateKey] = [];
       }
@@ -108,9 +109,45 @@ const Activities: React.FC = () => {
 
   const getTotalForDate = (transactions: Transaction[]) => {
     return transactions.reduce((sum, t) => {
-      return t.type === 'deposit' ? sum + t.amount : sum - t.amount;
+      return t.transaction_type === 'deposit' ? sum + t.amount : sum - t.amount;
     }, 0);
   };
+
+  const handleRefresh = async (event: CustomEvent) => {
+    logger.navigation('Pull-to-refresh triggered on Activities page');
+    try {
+      await refreshTransactions();
+      logger.navigation('Activities page data refreshed successfully');
+    } catch (error) {
+      logger.error('Error refreshing Activities page data', error instanceof Error ? error : new Error(String(error)));
+    } finally {
+      event.detail.complete();
+    }
+  };
+
+  // Show loading state while transactions are being loaded
+  if (isLoading) {
+    return (
+      <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonButtons slot="start">
+              <IonBackButton defaultHref="/home" />
+            </IonButtons>
+            <IonTitle>Activities</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding">
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+            <div style={{ textAlign: 'center' }}>
+              <IonSpinner name="crescent" />
+              <p>Loading activities...</p>
+            </div>
+          </div>
+        </IonContent>
+      </IonPage>
+    );
+  }
 
   return (
     <IonPage>
@@ -129,6 +166,15 @@ const Activities: React.FC = () => {
       </IonHeader>
 
       <IonContent className="ion-padding">
+        <IonRefresher onIonRefresh={handleRefresh}>
+          <IonRefresherContent
+            pullingIcon="chevron-down-circle-outline"
+            pullingText="Pull to refresh"
+            refreshingSpinner="circles"
+            refreshingText="Refreshing..."
+          />
+        </IonRefresher>
+
         {/* Search and Filter Controls */}
         <div className="controls-section">
           <IonSearchbar
@@ -174,10 +220,10 @@ const Activities: React.FC = () => {
             <IonText 
               className="stat-number"
               color={filteredTransactions.reduce((sum, t) => 
-                t.type === 'deposit' ? sum + t.amount : sum - t.amount, 0) >= 0 ? 'success' : 'danger'}
+                t.transaction_type === 'deposit' ? sum + t.amount : sum - t.amount, 0) >= 0 ? 'success' : 'danger'}
             >
               ${Math.abs(filteredTransactions.reduce((sum, t) => 
-                t.type === 'deposit' ? sum + t.amount : sum - t.amount, 0)).toFixed(2)}
+                t.transaction_type === 'deposit' ? sum + t.amount : sum - t.amount, 0)).toFixed(2)}
             </IonText>
           </div>
         </div>
@@ -208,11 +254,11 @@ const Activities: React.FC = () => {
                       </IonText>
                     </div>
                     <div className="day-total">
-                      <IonText color={dayTotal >= 0 ? 'success' : 'danger'}>
-                        {dayTotal >= 0 ? '+' : ''}${dayTotal.toFixed(2)}
-                      </IonText>
                       <IonText color="medium" className="transaction-count">
                         {dayTransactions.length} transaction{dayTransactions.length !== 1 ? 's' : ''}
+                      </IonText>
+                      <IonText color={dayTotal >= 0 ? 'success' : 'danger'}>
+                        {dayTotal >= 0 ? '+' : ''}${dayTotal.toFixed(2)}
                       </IonText>
                     </div>
                   </div>
@@ -221,8 +267,8 @@ const Activities: React.FC = () => {
                     {dayTransactions.map((transaction, index) => (
                       <IonItem key={`${transaction.id}-${index}`} className="transaction-item">
                         <IonIcon
-                          icon={transaction.type === 'deposit' ? trendingUpOutline : trendingDownOutline}
-                          color={transaction.type === 'deposit' ? 'success' : 'danger'}
+                          icon={transaction.transaction_type === 'deposit' ? trendingUpOutline : trendingDownOutline}
+                          color={transaction.transaction_type === 'deposit' ? 'success' : 'danger'}
                           slot="start"
                         />
                         
@@ -230,33 +276,36 @@ const Activities: React.FC = () => {
                           <div className="transaction-main">
                             <div className="transaction-info">
                               <h3 className="transaction-type">
-                                {transaction.type === 'deposit' ? 'Deposit' : 'Withdrawal'}
+                                {transaction.transaction_type === 'deposit' ? 'Deposit' : 'Withdrawal'}
                               </h3>
                               {transaction.description && (
                                 <p className="transaction-description">{transaction.description}</p>
                               )}
                             </div>
-                            <div className="transaction-amount">
-                              <IonText 
-                                color={transaction.type === 'deposit' ? 'success' : 'danger'}
-                                className="amount-text"
-                              >
-                                {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount.toFixed(2)}
-                              </IonText>
+                            <div className="time-amount">
+                              <div className="transaction-meta">
+                                <IonIcon icon={timeOutline} />
+                                <IonText color="medium">
+                                  {(() => {
+                                    const transactionDate = new Date(transaction.transaction_date);
+                                    return isValid(transactionDate) 
+                                  ? format(transactionDate, 'h:mm a')
+                                  : 'Invalid date';
+                                  })()}
+                                </IonText>
+                              </div>
+                              <div className="transaction-amount">
+                                <IonText 
+                                  color={transaction.transaction_type === 'deposit' ? 'success' : 'danger'}
+                                  className="amount-text"
+                                >
+                                  {transaction.transaction_type === 'deposit' ? '+' : '-'}${transaction.amount.toFixed(2)}
+                                </IonText>
+                              </div>
                             </div>
+                            
                           </div>
-                          <div className="transaction-meta">
-                            <IonIcon icon={timeOutline} />
-                            <IonText color="medium">
-                              {format(new Date(transaction.date), 'h:mm a')}
-                            </IonText>
-                            {transaction.category && (
-                              <>
-                                <span className="meta-separator">•</span>
-                                <IonText color="medium">{transaction.category}</IonText>
-                              </>
-                            )}
-                          </div>
+                          
                         </IonLabel>
                       </IonItem>
                     ))}

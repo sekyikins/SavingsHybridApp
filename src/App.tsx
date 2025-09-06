@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { IonApp, setupIonicReact, isPlatform, IonTabs, IonRouterOutlet, IonTabBar, IonTabButton, IonIcon, IonLabel, IonPage, IonContent } from '@ionic/react';
+import { IonApp, setupIonicReact, isPlatform, IonTabs, IonRouterOutlet, IonTabBar, IonTabButton, IonIcon, IonLabel, IonPage, IonContent, IonSpinner } from '@ionic/react';
 import { Route, Redirect, useLocation } from 'react-router-dom';
 import { StatusBar } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
@@ -8,14 +8,7 @@ import { home, calendar, settings } from 'ionicons/icons';
 import { useTheme, ThemeProvider } from './contexts/ThemeContext';
 import { useAuth } from './hooks/useAuth';
 import { SettingsProvider } from './contexts/SettingsContext';
-
-
-declare global {
-  interface Window {
-    __theme?: string;
-    __setTheme?: (theme: string) => void;
-  }
-}
+import PasscodeGuard from './components/PasscodeGuard';
 
 // Core CSS required for Ionic components
 import '@ionic/react/css/core.css';
@@ -40,6 +33,8 @@ import Home from './pages/Home';
 import CalendarPage from './pages/Calendar';
 import SettingsPage from './pages/Settings';
 import AuthPage from './pages/Auth';
+import PasscodeSetup from './pages/Auth/PasscodeSetup';
+import PasscodeVerify from './pages/Auth/PasscodeVerify';
 import EditOverall from './pages/EditOverall';
 import AddTransact from './pages/AddTransact';
 import MonthlyProgress from './pages/Progress/MonthlyProgress';
@@ -90,7 +85,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ component: Component, .
           return (
             <IonPage>
               <IonContent className="ion-padding">
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: '16px' }}>
+                  <IonSpinner name="crescent" />
                   <div>Loading...</div>
                 </div>
               </IonContent>
@@ -136,53 +132,57 @@ const AppRoutes: React.FC = () => {
   };
 
   // If we're on the auth page, don't show tabs
-  if (location.pathname === '/auth') {
+  if (location.pathname === '/auth' || (location.pathname && location.pathname.startsWith('/auth/'))) {
     return (
       <IonRouterOutlet>
         <Route exact path="/auth" component={AuthPage} />
+        <Route exact path="/auth/passcode-setup" component={PasscodeSetup} />
+        <Route exact path="/auth/passcode-verify" component={PasscodeVerify} />
       </IonRouterOutlet>
     );
   }
 
   // For all other routes, show tabs
   return (
-    <IonTabs>
-      <IonRouterOutlet>
-        <ProtectedRoute exact path="/home" component={Home} />
-        <ProtectedRoute exact path="/calendar" component={CalendarPage} />
-        <ProtectedRoute path="/settings" component={SettingsPage} />
-        <ProtectedRoute path="/privacy-policy" component={PrivacyPolicy} />
-        <ProtectedRoute path="/terms-of-service" component={TermsOfService} />
-        <ProtectedRoute exact path="/progress/monthly" component={MonthlyProgress} />
-        <ProtectedRoute exact path="/progress/weekly" component={WeeklyProgress} />
-        <ProtectedRoute exact path="/activities" component={Activities} />
-        <Route path="/auth" component={AuthPage} />
-        <ProtectedRoute exact path="/add-transact" component={AddTransact} />
-        <ProtectedRoute exact path="/edit-overall/:date" component={EditOverall} />
-        <ProtectedRoute exact path="/help-support" component={HelpAndSupport} />
-        <ProtectedRoute exact path="/report-bug" component={BugReport} />
-        <ProtectedRoute exact path="/feedback" component={Feedback} />
-        <ProtectedRoute exact path="/emergency" component={EmergencySupport} />
-        <Route exact path="/">
-          <Redirect to="/home" />
-        </Route>
-      </IonRouterOutlet>
+    <PasscodeGuard>
+      <IonTabs>
+        <IonRouterOutlet>
+          <ProtectedRoute exact path="/home" component={Home} />
+          <ProtectedRoute exact path="/calendar" component={CalendarPage} />
+          <ProtectedRoute path="/settings" component={SettingsPage} />
+          <ProtectedRoute path="/privacy-policy" component={PrivacyPolicy} />
+          <ProtectedRoute path="/terms-of-service" component={TermsOfService} />
+          <ProtectedRoute exact path="/progress/monthly" component={MonthlyProgress} />
+          <ProtectedRoute exact path="/progress/weekly" component={WeeklyProgress} />
+          <ProtectedRoute exact path="/activities" component={Activities} />
+          <Route path="/auth" component={AuthPage} />
+          <ProtectedRoute exact path="/add-transact" component={AddTransact} />
+          <ProtectedRoute exact path="/edit-overall/:date" component={EditOverall} />
+          <ProtectedRoute exact path="/help-support" component={HelpAndSupport} />
+          <ProtectedRoute exact path="/report-bug" component={BugReport} />
+          <ProtectedRoute exact path="/feedback" component={Feedback} />
+          <ProtectedRoute exact path="/emergency" component={EmergencySupport} />
+          <Route exact path="/">
+            <Redirect to="/home" />
+          </Route>
+        </IonRouterOutlet>
 
-      <IonTabBar slot="bottom" className="tab-bar">
-        <IonTabButton tab="home" href="/home" className={isTabActive('/home') ? 'tab-active' : ''}>
-          <IonIcon icon={home} className={isTabActive('/home') ? 'tab-icon-active' : 'tab-icon'} />
-          <IonLabel className={isTabActive('/home') ? 'tab-label-active' : 'tab-label'}>Home</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="calendar" href="/calendar" className={isTabActive('/calendar') ? 'tab-active' : ''}>
-          <IonIcon icon={calendar} className={isTabActive('/calendar') ? 'tab-icon-active' : 'tab-icon'} />
-          <IonLabel className={isTabActive('/calendar') ? 'tab-label-active' : 'tab-label'}>Calendar</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="settings" href="/settings" className={isTabActive('/settings') ? 'tab-active' : ''}>
-          <IonIcon icon={settings} className={isTabActive('/settings') ? 'tab-icon-active' : 'tab-icon'} />
-          <IonLabel className={isTabActive('/settings') ? 'tab-label-active' : 'tab-label'}>Settings</IonLabel>
-        </IonTabButton>
-      </IonTabBar>
-    </IonTabs>
+        <IonTabBar slot="bottom" className="tab-bar">
+          <IonTabButton tab="home" href="/home" className={isTabActive('/home') ? 'tab-active' : ''}>
+            <IonIcon icon={home} className={isTabActive('/home') ? 'tab-icon-active' : 'tab-icon'} />
+            <IonLabel className={isTabActive('/home') ? 'tab-label-active' : 'tab-label'}>Home</IonLabel>
+          </IonTabButton>
+          <IonTabButton tab="calendar" href="/calendar" className={isTabActive('/calendar') ? 'tab-active' : ''}>
+            <IonIcon icon={calendar} className={isTabActive('/calendar') ? 'tab-icon-active' : 'tab-icon'} />
+            <IonLabel className={isTabActive('/calendar') ? 'tab-label-active' : 'tab-label'}>Calendar</IonLabel>
+          </IonTabButton>
+          <IonTabButton tab="settings" href="/settings" className={isTabActive('/settings') ? 'tab-active' : ''}>
+            <IonIcon icon={settings} className={isTabActive('/settings') ? 'tab-icon-active' : 'tab-icon'} />
+            <IonLabel className={isTabActive('/settings') ? 'tab-label-active' : 'tab-label'}>Settings</IonLabel>
+          </IonTabButton>
+        </IonTabBar>
+      </IonTabs>
+    </PasscodeGuard>
   );
 };
 

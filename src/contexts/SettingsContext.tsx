@@ -44,8 +44,8 @@ export const SettingsProvider: React.FC<{children: ReactNode}> = ({ children }) 
             defaultView: 'month'
           },
           savingsGoals: {
-            monthlyGoal: 1000,
-            weeklyGoal: 250
+            monthlyGoal: 0,
+            weeklyGoal: 0
           }
         };
   });

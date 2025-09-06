@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
 import { 
   IonContent, 
@@ -8,14 +8,26 @@ import {
   IonToolbar,
   IonButton,
   IonIcon,
-  IonButtons
+  IonButtons,
+  IonRefresher,
+  IonRefresherContent,
+  IonSpinner
 } from '@ionic/react';
 import { 
   chevronBack, 
   chevronForward,
   calendarOutline
 } from 'ionicons/icons';
-import { startOfWeek, format, parseISO, isToday as isTodayDate, isWeekend as isWeekendDate, addDays, addWeeks, getDaysInMonth } from 'date-fns';
+import { 
+  startOfWeek, 
+  format, 
+  parseISO, 
+  isToday as isTodayDate, 
+  isWeekend as isWeekendDate, 
+  addDays, 
+  addWeeks, 
+  getDaysInMonth 
+} from 'date-fns';
 import useTransactions from '../../hooks/useTransactions';
 import { logger } from '../../utils/debugLogger';
 import { dataIntegrationService } from '../../services/dataIntegrationService';
@@ -39,6 +51,7 @@ interface CalendarState {
 
 const CalendarPage: React.FC = () => {
   const history = useHistory();
+  const { transactions, refreshTransactions, isLoading } = useTransactions();
   const [calendarState, setCalendarState] = useState<CalendarState>(() => {
     const savedState = localStorage.getItem('calendarState');
     if (savedState) {
@@ -60,31 +73,86 @@ const CalendarPage: React.FC = () => {
   });
 
   const { currentDate, viewMode, selectedDate, weekStart } = calendarState;
-  // const calendarDays = useMemo(() => [], []);
-  const [selectedDayData, setSelectedDayData] = useState<{
-    date: string;
-    deposits: number;
-    withdrawals: number;
-  } | null>(null);
 
-  const { getTransactionsInRange, transactions: allTransactions } = useTransactions();
-  
+  const handleRefresh = async (event: CustomEvent) => {
+    logger.navigation('Pull-to-refresh triggered on Calendar page');
+    try {
+      await refreshTransactions();
+      logger.navigation('Calendar page data refreshed successfully');
+    } catch (error) {
+      logger.error('Error refreshing Calendar page data', error instanceof Error ? error : new Error(String(error)));
+    } finally {
+      event.detail.complete();
+    }
+  };
+
+  // Clear cache and refresh when transactions change
+  useEffect(() => {
+    dataIntegrationService.clearCache();
+    logger.data('Transaction data refreshed in Calendar', { 
+      transactionCount: transactions.length 
+    });
+  }, [transactions.length]);
+
+  // Memoize transaction data mapping for better performance
+  const transactionDataMap = useMemo(() => {
+    const map = new Map<string, { deposits: number; withdrawals: number; count: number }>();
+    
+    transactions.forEach(tx => {
+      const dateStr = new Date(tx.transaction_date).toISOString().split('T')[0];
+      const existing = map.get(dateStr) || { deposits: 0, withdrawals: 0, count: 0 };
+      
+      if (tx.transaction_type === 'deposit') {
+        existing.deposits += tx.amount;
+      } else {
+        existing.withdrawals += tx.amount;
+      }
+      existing.count += 1;
+      
+      map.set(dateStr, existing);
+    });
+    
+    logger.data('Transaction data map created', { 
+      totalDates: map.size, 
+      totalTransactions: transactions.length 
+    });
+    
+    return map;
+  }, [transactions]);
+
+  // Optimized function to get transaction data for a date
+  const getTransactionDataForDate = useCallback((date: string) => {
+    const data = transactionDataMap.get(date) || { deposits: 0, withdrawals: 0, count: 0 };
+    return {
+      date,
+      deposits: data.deposits,
+      withdrawals: data.withdrawals,
+      netAmount: data.deposits - data.withdrawals,
+      transactionCount: data.count,
+      transactions: transactions.filter(tx => 
+        new Date(tx.transaction_date).toISOString().split('T')[0] === date
+      )
+    };
+  }, [transactionDataMap, transactions]);
+
+  // Memoize selected day data
+  const selectedDayData = useMemo(() => {
+    if (!selectedDate) return null;
+    const dayData = getTransactionDataForDate(selectedDate);
+    return {
+      date: dayData.date,
+      deposits: dayData.deposits,
+      withdrawals: dayData.withdrawals
+    };
+  }, [selectedDate, getTransactionDataForDate]);
+
   useEffect(() => {
     logger.componentMount('Calendar', { 
-      totalTransactions: allTransactions.length,
+      totalTransactions: transactions.length,
       currentDate: currentDate.toISOString().split('T')[0]
     });
     return () => logger.componentUnmount('Calendar');
   }, []);
-
-  // Get real transaction data for a specific date using data integration service
-  const getTransactionDataForDate = useCallback((date: string) => {
-    const dayData = dataIntegrationService.getDayData(date, getTransactionsInRange(
-      new Date(date + 'T00:00:00'),
-      new Date(date + 'T23:59:59')
-    ));
-    return dayData;
-  }, [getTransactionsInRange]);
 
   // Handle day click
   const handleDayClick = useCallback((date: string) => {
@@ -107,37 +175,8 @@ const CalendarPage: React.FC = () => {
       };
     });
     
-    // Only update the data if we don't have it yet or if the date has changed
-    const dayData = getTransactionDataForDate(date);
-    setSelectedDayData({
-      date: dayData.date,
-      deposits: dayData.deposits,
-      withdrawals: dayData.withdrawals
-    });
-  }, [getTransactionDataForDate]);
-
-  // Function to render day cell
-  // const renderDayCell = useCallback((day: CalendarDay, index: number) => {
-  //   const date = new Date(day.date);
-  //   const dayNumber = date.getDate();
-  //   const hasInfo = day.deposit || day.withdrawal;
-
-  //   return (
-  //     <div
-  //       key={`${day.date}-${index}`}
-  //       className={`day-cell ${day.isCurrentMonth ? '' : 'other-month'} ${
-  //         day.date === selectedDate ? 'selected' : ''
-  //       } ${isTodayDate(parseISO(day.date)) ? 'today' : ''}`}
-  //       onClick={() => handleDayClick(day.date)}
-  //     >
-  //       <div className="day-number">
-  //         {day.isToday && <div className="today-dot"></div>}
-  //         {dayNumber}
-  //       </div>
-  //       {hasInfo && <div className="day-indicator" />}
-  //     </div>
-  //   );
-  // }, [selectedDate, handleDayClick]);
+    logger.navigation('Calendar day selected', { date });
+  }, []);
 
   // Toggle between month and week view
   const toggleViewMode = useCallback((): void => {
@@ -194,16 +233,6 @@ const CalendarPage: React.FC = () => {
     });
   }, []);
 
-  // Save calendar state to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('calendarState', JSON.stringify({
-      currentDate: currentDate.toISOString(),
-      viewMode,
-      selectedDate,
-      weekStart: weekStart.toISOString()
-    }));
-  }, [currentDate, viewMode, selectedDate, weekStart]);
-
   // Handle "Jump to Today" button click
   const handleToday = useCallback(() => {
     const today = new Date();
@@ -215,47 +244,21 @@ const CalendarPage: React.FC = () => {
       weekStart: startOfWeek(today, { weekStartsOn: 1 })
     }));
     
-    // Update the selected day data with real transaction data
-    const dayData = getTransactionDataForDate(todayStr);
-    setSelectedDayData({
-      date: dayData.date,
-      deposits: dayData.deposits,
-      withdrawals: dayData.withdrawals
-    });
-    
     logger.navigation('Calendar jumped to today', { date: todayStr });
-  }, [getTransactionDataForDate]);
+  }, []);
 
-  // Initialize calendar with today's date and real data
+  // Save calendar state to localStorage whenever it changes
   useEffect(() => {
-    const today = new Date();
-    const todayStr = format(today, 'yyyy-MM-dd');
-    
-    // Set initial calendar state to today
-    setCalendarState(prev => ({
-      ...prev,
-      currentDate: today,
-      selectedDate: todayStr,
-      weekStart: startOfWeek(today, { weekStartsOn: 1 })
+    localStorage.setItem('calendarState', JSON.stringify({
+      currentDate: currentDate.toISOString(),
+      viewMode,
+      selectedDate,
+      weekStart: weekStart.toISOString()
     }));
-    
-    // Load today's transaction data
-    const dayData = getTransactionDataForDate(todayStr);
-    setSelectedDayData({
-      date: dayData.date,
-      deposits: dayData.deposits,
-      withdrawals: dayData.withdrawals
-    });
-    
-    logger.data('Calendar initialized with today\'s data', {
-      date: todayStr,
-      deposits: dayData.deposits,
-      withdrawals: dayData.withdrawals
-    });
-  }, [getTransactionDataForDate]);
+  }, [currentDate, viewMode, selectedDate, weekStart]);
 
-  // Generate calendar grid for month view
-  const renderCalendarGrid = React.useCallback((): JSX.Element | null => {
+  // Generate calendar grid for month view with memoization
+  const renderCalendarGrid = useMemo((): JSX.Element | null => {
     if (viewMode !== 'month') return null;
     
     const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -278,6 +281,11 @@ const CalendarPage: React.FC = () => {
       const isToday = isTodayDate(date);
       const isWeekend = isWeekendDate(date);
       
+      // Get transaction data from memoized map
+      const transactionData = transactionDataMap.get(dateStr);
+      const hasTransactions = transactionData && (transactionData.deposits > 0 || transactionData.withdrawals > 0);
+      const netAmount = transactionData ? transactionData.deposits - transactionData.withdrawals : 0;
+      
       days.push(
         <div
           key={dateStr}
@@ -288,20 +296,12 @@ const CalendarPage: React.FC = () => {
             {isToday && <div className="today-dot"></div>}
             {i}
           </div>
-          {(() => {
-            const dayData = getTransactionDataForDate(dateStr);
-            const hasTransactions = dayData.deposits > 0 || dayData.withdrawals > 0;
-            const netAmount = dayData.deposits - dayData.withdrawals;
-            if (hasTransactions) {
-              return (
-                <div className={`day-indicator ${
-                  netAmount > 0 ? 'indicator-positive' : 
-                  netAmount < 0 ? 'indicator-negative' : 'indicator-neutral'
-                }`}></div>
-              );
-            }
-            return null;
-          })()}
+          {hasTransactions && (
+            <div className={`day-indicator ${
+              netAmount > 0 ? 'indicator-positive' : 
+              netAmount < 0 ? 'indicator-negative' : 'indicator-neutral'
+            }`}></div>
+          )}
         </div>
       );
     }
@@ -311,10 +311,10 @@ const CalendarPage: React.FC = () => {
         {days}
       </div>
     );
-  }, [currentDate, selectedDate, viewMode, handleDayClick]);
+  }, [currentDate, selectedDate, viewMode, handleDayClick, transactionDataMap]);
 
-  // Generate week view
-  const renderWeekView = React.useCallback((): JSX.Element => {
+  // Generate week view with memoization
+  const renderWeekView = useMemo((): JSX.Element => {
     const days = [];
     const weekStartDate = startOfWeek(weekStart, { weekStartsOn: 1 });
     
@@ -324,6 +324,11 @@ const CalendarPage: React.FC = () => {
       const isSelected = dateStr === selectedDate;
       const isToday = isTodayDate(day);
       const isWeekend = isWeekendDate(day);
+      
+      // Get transaction data from memoized map
+      const transactionData = transactionDataMap.get(dateStr);
+      const hasTransactions = transactionData && (transactionData.deposits > 0 || transactionData.withdrawals > 0);
+      const netAmount = transactionData ? transactionData.deposits - transactionData.withdrawals : 0;
       
       days.push(
         <div
@@ -335,20 +340,12 @@ const CalendarPage: React.FC = () => {
             {isToday && <div className="today-dot"></div>}
             {day.getDate()}
           </div>
-          {(() => {
-            const dayData = getTransactionDataForDate(dateStr);
-            const hasTransactions = dayData.deposits > 0 || dayData.withdrawals > 0;
-            const netAmount = dayData.deposits - dayData.withdrawals;
-            if (hasTransactions) {
-              return (
-                <div className={`day-indicator ${
-                  netAmount > 0 ? 'indicator-positive' : 
-                  netAmount < 0 ? 'indicator-negative' : 'indicator-neutral'
-                }`}></div>
-              );
-            }
-            return null;
-          })()}
+          {hasTransactions && (
+            <div className={`day-indicator ${
+              netAmount > 0 ? 'indicator-positive' : 
+              netAmount < 0 ? 'indicator-negative' : 'indicator-neutral'
+            }`}></div>
+          )}
         </div>
       );
     }
@@ -358,79 +355,28 @@ const CalendarPage: React.FC = () => {
         {days}
       </div>
     );
-  }, [weekStart, selectedDate, handleDayClick]);
+  }, [weekStart, selectedDate, handleDayClick, transactionDataMap]);
 
-  // Generate calendar days based on current view mode
-  React.useEffect(() => {
-    const days: CalendarDay[] = [];
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
-
-    if (viewMode === 'month') {
-      // Generate days for month view
-      const firstDay = new Date(currentYear, currentMonth, 1);
-      const lastDay = new Date(currentYear, currentMonth + 1, 0);
-      const startDay = startOfWeek(firstDay, { weekStartsOn: 1 });
-      const endDay = startOfWeek(new Date(lastDay.setDate(lastDay.getDate() + 6)), { weekStartsOn: 1 });
-
-      for (let d = new Date(startDay); d <= endDay; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split('T')[0];
-        days.push({
-          date: dateStr,
-          isToday: isTodayDate(d),
-          isWeekend: isWeekendDate(d),
-          isCurrentMonth: d.getMonth() === currentMonth
-        });
-      }
-    } else {
-      // Generate days for week view
-      const weekStartDate = startOfWeek(weekStart, { weekStartsOn: 1 });
-      for (let i = 0; i < 7; i++) {
-        const day = addDays(weekStartDate, i);
-        const dateStr = day.toISOString().split('T')[0];
-        days.push({
-          date: dateStr,
-          isToday: isTodayDate(day),
-          isWeekend: isWeekendDate(day),
-          isCurrentMonth: true
-        });
-      }
-    }
-
-    // setCalendarDays(days);
-  }, [currentDate, viewMode, weekStart]);
-
-  // Save calendar state to localStorage whenever it changes
-  React.useEffect(() => {
-    localStorage.setItem('calendarState', JSON.stringify({
-      currentDate: currentDate.toISOString(),
-      viewMode,
-      selectedDate,
-      weekStart: weekStart.toISOString()
-    }));
-  }, [currentDate, viewMode, selectedDate, weekStart]);
-
-  // Load selected day data when selectedDate changes
-  useEffect(() => {
-    if (!selectedDate) return;
-    
-    // Only update if we don't have data for this date yet
-    if (selectedDayData?.date !== selectedDate) {
-      const dayData = getTransactionDataForDate(selectedDate);
-      setSelectedDayData({
-        date: dayData.date,
-        deposits: dayData.deposits,
-        withdrawals: dayData.withdrawals
-      });
-      
-      logger.data('Calendar day data loaded', {
-        date: selectedDate,
-        deposits: dayData.deposits,
-        withdrawals: dayData.withdrawals,
-        transactionCount: dayData.transactionCount
-      });
-    }
-  }, [selectedDate, selectedDayData?.date, getTransactionDataForDate]);
+  // Show loading state while transactions are being loaded
+  if (isLoading) {
+    return (
+      <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>Calendar</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding">
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+            <div style={{ textAlign: 'center' }}>
+              <IonSpinner name="crescent" />
+              <p>Loading calendar data...</p>
+            </div>
+          </div>
+        </IonContent>
+      </IonPage>
+    );
+  }
 
   // Render the component
   return (
@@ -475,7 +421,15 @@ const CalendarPage: React.FC = () => {
         </IonToolbar>
       </IonHeader>
 
-      <IonContent>
+      <IonContent fullscreen>
+        <IonRefresher onIonRefresh={handleRefresh}>
+          <IonRefresherContent
+            pullingIcon="chevron-down-circle-outline"
+            pullingText="Pull to refresh"
+            refreshingSpinner="circles"
+            refreshingText="Refreshing..."
+          />
+        </IonRefresher>
         <div className="calendar-container">
           {/* Days of Week */}
           <div className="days-header">
@@ -484,7 +438,7 @@ const CalendarPage: React.FC = () => {
             ))}
           </div>
           {/* Display Calendar */}
-          {viewMode === 'month' ? renderCalendarGrid() : renderWeekView()}
+          {viewMode === 'month' ? renderCalendarGrid : renderWeekView}
         </div>
         {/* Jump To Today Button */}
         <div className="today-button">

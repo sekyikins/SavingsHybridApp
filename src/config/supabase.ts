@@ -48,6 +48,7 @@ export const tables = {
   categories: 'categories',
   transactions: 'transactions',
   savings_summary: 'savings_summary',
+  device_sessions: 'device_sessions',
 };
 
 // Updated type definitions matching new database schema
@@ -163,6 +164,30 @@ export type SavingsSummary = {
   created_at?: string;
   updated_at?: string;
 };
+
+export type DeviceSession = {
+  id?: string;
+  user_id: string;
+  device_id: string;
+  device_name?: string;
+  device_type?: 'mobile' | 'tablet' | 'desktop' | 'web';
+  platform?: string;
+  app_version?: string;
+  biometric_type?: 'fingerprint' | 'face_id' | 'voice' | 'none';
+  biometric_enabled?: boolean;
+  is_trusted_device?: boolean;
+  last_active?: string;
+  ip_address?: string;
+  user_agent?: string;
+  location_data?: any;
+  session_token?: string;
+  expires_at?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type DeviceSessionInsert = Omit<DeviceSession, 'id' | 'created_at' | 'updated_at'>;
+export type DeviceSessionUpdate = Partial<DeviceSessionInsert>;
 
 // Legacy types for backward compatibility (deprecated)
 export type SavingsRecord = {

@@ -673,10 +673,46 @@ COMMENT ON TABLE user_settings IS 'Comprehensive user preferences and settings';
 COMMENT ON TABLE categories IS 'Transaction categories for organization';
 COMMENT ON TABLE transactions IS 'Individual transaction records with full details';
 COMMENT ON TABLE savings_summary IS 'Aggregated savings data by period';
-COMMENT ON TABLE device_sessions IS 'Device sessions for biometrics and device tracking';
-COMMENT ON TABLE user_activity_log IS 'User activity log for tracking user actions';
-COMMENT ON TABLE notification_history IS 'Notification history for tracking notifications';
-COMMENT ON TABLE backup_history IS 'Backup history for tracking backups';
+COMMENT ON TABLE device_sessions IS 'Device session tracking for biometrics';
+COMMENT ON TABLE user_activity_log IS 'User activity and audit trail';
+COMMENT ON TABLE notification_history IS 'Notification delivery history';
+COMMENT ON TABLE backup_history IS 'Backup and restore history';
+
+-- Create delete_user_account function
+CREATE OR REPLACE FUNCTION delete_user_account()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    current_user_id UUID;
+BEGIN
+    -- Get the current authenticated user ID
+    current_user_id := auth.uid();
+    
+    IF current_user_id IS NULL THEN
+        RAISE EXCEPTION 'User not authenticated';
+    END IF;
+    
+    -- Delete all user data in correct order (respecting foreign key constraints)
+    DELETE FROM transactions WHERE user_id = current_user_id;
+    DELETE FROM savings_summary WHERE user_id = current_user_id;
+    DELETE FROM categories WHERE user_id = current_user_id;
+    DELETE FROM device_sessions WHERE user_id = current_user_id;
+    DELETE FROM user_activity_log WHERE user_id = current_user_id;
+    DELETE FROM notification_history WHERE user_id = current_user_id;
+    DELETE FROM backup_history WHERE user_id = current_user_id;
+    DELETE FROM user_passcodes WHERE user_id = current_user_id;
+    DELETE FROM user_settings WHERE user_id = current_user_id;
+    DELETE FROM user_profiles WHERE user_id = current_user_id;
+    
+    -- Delete the auth user (this will cascade to any remaining references)
+    DELETE FROM auth.users WHERE id = current_user_id;
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION delete_user_account() TO authenticated;
 
 -- Completion notification
 DO $$

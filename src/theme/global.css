@@ -127,3 +127,65 @@ ion-tab-bar {
   --background: #1a1a1a !important;
   --color: white !important;
 }
+
+/* Alert theming - Light mode */
+ion-alert .alert-wrapper {
+  background: #ffffff !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+ion-alert .alert-head h2 {
+  color: #000000 !important;
+  font-weight: 600 !important;
+}
+
+ion-alert .alert-message {
+  color: #666666 !important;
+}
+
+ion-alert .alert-input {
+  background: #f8f9fa !important;
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 8px !important;
+  color: #000000 !important;
+}
+
+ion-alert .alert-input::placeholder {
+  color: #999999 !important;
+}
+
+ion-alert .alert-button {
+  color: var(--ion-color-primary) !important;
+  font-weight: 500 !important;
+}
+
+/* Alert theming - Dark mode */
+@media (prefers-color-scheme: dark) {
+  ion-alert .alert-wrapper {
+    background: #2d2d2d !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  ion-alert .alert-head h2 {
+    color: #ffffff !important;
+  }
+
+  ion-alert .alert-message {
+    color: #cccccc !important;
+  }
+
+  ion-alert .alert-input {
+    background: #3a3a3a !important;
+    border: 1px solid #555555 !important;
+    color: #ffffff !important;
+  }
+
+  ion-alert .alert-input::placeholder {
+    color: #888888 !important;
+  }
+
+  ion-alert .alert-button {
+    color: var(--ion-color-primary-tint) !important;
+  }
+}

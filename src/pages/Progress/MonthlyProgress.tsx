@@ -61,7 +61,7 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
   const { getTransactionsInRange } = useTransactions();
   const [monthlyTarget, setMonthlyTarget] = useState<number>(() => {
     const saved = localStorage.getItem('monthlyTarget');
-    return saved ? parseFloat(saved) : 4000; // Default target
+    return saved ? parseFloat(saved) : 0; // Default target to 0
   });
   const [editingTarget, setEditingTarget] = useState<number>(monthlyTarget);
   const [isEditing, setIsEditing] = useState(false);
@@ -75,22 +75,34 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
   });
 
   // Calculate monthly stats with useMemo to prevent unnecessary recalculations
-  const { total, withdrawals, dailyAverage, remaining, progress, isTargetReached } = useMemo<Omit<MonthlyStats, 'extra'>>(() => {
+  const { saved, total, withdrawals, dailyAverage, remaining, progress, isTargetReached } = useMemo<Omit<MonthlyStats, 'extra'> & { saved: number }>(() => {
     const transactions = getTransactionsInRange(monthStart, monthEnd);
     
-    const total = transactions.reduce((sum, t) => 
+    // Debug logging
+    console.log('MonthlyProgress Debug:', {
+      monthStart: format(monthStart, 'yyyy-MM-dd'),
+      monthEnd: format(monthEnd, 'yyyy-MM-dd'),
+      totalTransactions: transactions.length,
+      transactionDates: transactions.map(t => t.transaction_date),
+      transactions: transactions.map(t => ({ date: t.transaction_date, type: t.transaction_type, amount: t.amount }))
+    });
+    
+    const saved = transactions.reduce((sum, t) => 
       sum + (t.transaction_type === 'deposit' ? t.amount : 0), 0);
       
     const withdrawals = transactions.reduce((sum, t) => 
       sum + (t.transaction_type === 'withdrawal' ? Math.abs(t.amount) : 0), 0);
       
+    const total = saved - withdrawals; // Total amount (saved - withdrawals)
+      
     const daysPassed = monthDays.filter(day => day <= today && day <= monthEnd).length;
-    const dailyAvg = daysPassed > 0 ? total / daysPassed : 0;
+    const dailyAvg = daysPassed > 0 ? saved / daysPassed : 0;
     const targetReached = monthlyTarget > 0 && total >= monthlyTarget;
     const remaining = Math.max(0, monthlyTarget - total);
-    const prog = monthlyTarget > 0 ? Math.min(1, total / monthlyTarget) : 0;
+    const prog = monthlyTarget > 0 && total > 0 ? Math.min(1, total / monthlyTarget) : 0;
     
     return {
+      saved,
       total,
       withdrawals,
       dailyAverage: dailyAvg,
@@ -109,17 +121,14 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
 
   // Get transactions for a specific day
   const getTransactionsByDay = useCallback((day: Date): Transaction[] => {
-    const transactions = getTransactionsInRange(day, endOfDay(day));
-    return transactions;
-  }, [getTransactionsInRange]);
-
-  // Get days that have transactions
-  // const daysWithTransactions = useMemo(() => {
-  //   return monthDays.filter(day => {
-  //     const dayTransactions = getTransactionsByDay(day);
-  //     return dayTransactions.length > 0;
-  //   });
-  // }, [monthDays, getTransactionsByDay]);
+    const dayString = format(day, 'yyyy-MM-dd');
+    const allTransactions = getTransactionsInRange(monthStart, monthEnd);
+    return allTransactions.filter((t: Transaction) => {
+      const transDate = new Date(t.transaction_date);
+      const transDateString = format(transDate, 'yyyy-MM-dd');
+      return transDateString === dayString;
+    });
+  }, [getTransactionsInRange, monthStart, monthEnd]);
 
   const handleDateChange = (e: CustomEvent) => {
     const selectedDate = new Date(e.detail.value);
@@ -199,7 +208,11 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
             <div className="progress-stats">
               <div className="stat-item">
                 <IonText color="medium">Saved</IonText>
-                <IonText color="primary">${total.toFixed(2)}</IonText>
+                <IonText color="primary">${saved.toFixed(2)}</IonText>
+              </div>
+              <div className="stat-item">
+                <IonText color="medium">Total</IonText>
+                <IonText color={total >= 0 ? 'primary' : 'danger'}>${total.toFixed(2)}</IonText>
               </div>
               <div className="stat-item">
                 <IonText color="medium">Target</IonText>
@@ -227,14 +240,11 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
                   ${remaining.toFixed(2)}
                 </IonText>
               </div>
-            </div>
-            
-            <div className="progress-details">
-              <div className="detail-item">
+              <div className="stat-item">
                 <IonText>Daily Average</IonText>
                 <IonText>${dailyAverage.toFixed(2)}</IonText>
               </div>
-              <div className="detail-item">
+              <div className="stat-item">
                 <IonText>Withdrawals</IonText>
                 <IonText color="danger">-${withdrawals.toFixed(2)}</IonText>
               </div>
@@ -248,15 +258,28 @@ const MonthlyProgress: React.FC<MonthlyProgressProps> = ({ initialDate = new Dat
             const dayTransactions = getTransactionsByDay(day);
             const dayTotal = dayTransactions.reduce((sum: number, t: Transaction) => sum + (t.transaction_type === 'deposit' ? t.amount : -t.amount), 0);
             
+            // Debug logging
+            if (dayTransactions.length > 0) {
+              console.log(`Day ${format(day, 'yyyy-MM-dd')} has ${dayTransactions.length} transactions, total: ${dayTotal}`);
+            }
+            
             return (
               <IonItem key={index} className={isToday(day) ? 'today' : ''}>
                 <IonLabel>
                   <h3>{format(day, 'EEEE')}</h3>
                   <p>{format(day, 'MMM d, yyyy')}</p>
                 </IonLabel>
-                <IonText color={dayTotal >= 0 ? 'primary' : 'danger'} slot="end">
-                  {dayTotal >= 0 ? '+' : ''}{dayTotal.toFixed(2)}
-                </IonText>
+
+                <div className='transaction-count'>
+                  {dayTransactions.length > 0 && (
+                    <p style={{ fontSize: '0.8em', color: 'gray' }}>
+                      {dayTransactions.length} transaction(s)
+                    </p>
+                  )}
+                  <IonText color={dayTotal >= 0 ? 'primary' : 'danger'} slot="end">
+                    {dayTotal >= 0 ? '+' : ''}${Math.abs(dayTotal).toFixed(2)}
+                  </IonText>
+                </div>
               </IonItem>
             );
           })}

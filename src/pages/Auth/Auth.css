@@ -192,3 +192,118 @@
   margin-top: 1.5rem;
   width: 80%;
 }
+
+/* Passcode Setup Styles */
+.passcode-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80vh;
+  padding: 20px;
+}
+
+.passcode-card {
+  max-width: 400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.passcode-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.passcode-icon ion-icon {
+  font-size: 48px;
+  color: var(--ion-color-primary);
+}
+
+.passcode-description {
+  display: block;
+  text-align: center;
+  margin-bottom: 32px;
+  color: var(--ion-color-medium);
+  line-height: 1.5;
+}
+
+.passcode-display {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin: 32px 0;
+}
+
+.passcode-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--ion-color-medium);
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.passcode-dot.filled {
+  background: var(--ion-color-primary);
+  border-color: var(--ion-color-primary);
+}
+
+.number-pad {
+  max-width: 300px;
+  margin: 32px auto;
+}
+
+.number-button {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  font-size: 24px;
+  font-weight: 500;
+  margin: 8px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  --color: var(--ion-color-dark);
+  --background-hover: var(--ion-color-light);
+  --background-activated: var(--ion-color-medium);
+}
+
+.number-button.empty {
+  width: 70px;
+  height: 70px;
+}
+
+.number-button ion-icon {
+  font-size: 28px;
+}
+
+.continue-button {
+  margin-top: 32px;
+  --border-radius: 12px;
+  height: 48px;
+  font-weight: 600;
+}
+
+.error-text {
+  display: block;
+  text-align: center;
+  margin: 16px 0;
+  font-size: 14px;
+}
+
+.error-text p {
+  margin: 0;
+}
+
+/* Dark mode support for passcode */
+@media (prefers-color-scheme: dark) {
+  .number-button {
+    --color: var(--ion-color-light);
+    --background-hover: var(--ion-color-step-100);
+    --background-activated: var(--ion-color-step-200);
+  }
+  
+  .passcode-dot {
+    border-color: var(--ion-color-step-400);
+  }
+}

@@ -27,16 +27,16 @@ export default function EditOverall() {
   useIonViewWillEnter(() => {
     if (date) {
       const dateTransactions = transactions.filter(tx => {
-        const txDate = new Date(tx.date).toISOString().split('T')[0];
+        const txDate = new Date(tx.transaction_date).toISOString().split('T')[0];
         return txDate === date;
       });
       
       const totalDeposits = dateTransactions
-        .filter(tx => tx.type === 'deposit')
+        .filter(tx => tx.transaction_type === 'deposit')
         .reduce((sum, tx) => sum + tx.amount, 0);
       
       const totalWithdrawals = dateTransactions
-        .filter(tx => tx.type === 'withdrawal')
+        .filter(tx => tx.transaction_type === 'withdrawal')
         .reduce((sum, tx) => sum + tx.amount, 0);
       
       setDeposits(totalDeposits.toString());
@@ -61,8 +61,8 @@ export default function EditOverall() {
     if (deposits && Number(deposits) > 0) {
       addTransaction({
         amount: Number(deposits),
-        type: 'deposit',
-        date: new Date(date!).toISOString(),
+        transaction_type: 'deposit',
+        transaction_date: new Date(date!).toISOString(),
         description: 'Daily deposit summary'
       });
     }
@@ -70,8 +70,8 @@ export default function EditOverall() {
     if (withdrawals && Number(withdrawals) > 0) {
       addTransaction({
         amount: Number(withdrawals),
-        type: 'withdrawal',
-        date: new Date(date!).toISOString(),
+        transaction_type: 'withdrawal',
+        transaction_date: new Date(date!).toISOString(),
         description: 'Daily withdrawal summary'
       });
     }

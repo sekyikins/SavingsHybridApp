@@ -51,7 +51,7 @@ export const useBiometrics = (): UseBiometricsReturn => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to initialize biometrics';
       setError(errorMessage);
-      logger.error('Failed to initialize biometrics hook', err);
+      logger.error('Failed to initialize biometrics hook', err instanceof Error ? err : undefined);
     } finally {
       setIsLoading(false);
     }
@@ -69,7 +69,7 @@ export const useBiometrics = (): UseBiometricsReturn => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to check biometric capabilities';
       setError(errorMessage);
-      logger.error('Failed to check capabilities', err);
+      logger.error('Failed to check capabilities', err instanceof Error ? err : undefined);
       
       const fallbackCaps: BiometricCapabilities = {
         isAvailable: false,
@@ -98,7 +98,7 @@ export const useBiometrics = (): UseBiometricsReturn => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Authentication failed';
       setError(errorMessage);
-      logger.error('Biometric authentication failed', err);
+      logger.error('Biometric authentication failed', err instanceof Error ? err : undefined);
       return false;
     } finally {
       setIsLoading(false);
@@ -128,7 +128,7 @@ export const useBiometrics = (): UseBiometricsReturn => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to enable biometrics';
       setError(errorMessage);
-      logger.error('Failed to enable biometrics', err);
+      logger.error('Failed to enable biometrics', err instanceof Error ? err : undefined);
       return false;
     } finally {
       setIsLoading(false);
@@ -158,7 +158,7 @@ export const useBiometrics = (): UseBiometricsReturn => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to disable biometrics';
       setError(errorMessage);
-      logger.error('Failed to disable biometrics', err);
+      logger.error('Failed to disable biometrics', err instanceof Error ? err : undefined);
       return false;
     } finally {
       setIsLoading(false);
@@ -188,7 +188,7 @@ export const useBiometrics = (): UseBiometricsReturn => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to register device';
       setError(errorMessage);
-      logger.error('Failed to register device', err);
+      logger.error('Failed to register device', err instanceof Error ? err : undefined);
       return null;
     } finally {
       setIsLoading(false);
@@ -206,7 +206,7 @@ export const useBiometrics = (): UseBiometricsReturn => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to refresh devices';
       setError(errorMessage);
-      logger.error('Failed to refresh devices', err);
+      logger.error('Failed to refresh devices', err instanceof Error ? err : undefined);
     }
   }, [user?.id]);
 
@@ -218,7 +218,7 @@ export const useBiometrics = (): UseBiometricsReturn => {
       const enabled = await biometricsService.isBiometricEnabledForUser(user.id);
       setIsEnabled(enabled);
     } catch (err) {
-      logger.error('Failed to check biometric status', err);
+      logger.error('Failed to check biometric status', err instanceof Error ? err : undefined);
     }
   }, [user?.id]);
 

@@ -1,4 +1,4 @@
-import { NativeBiometric, BiometryType, BiometryErrorType } from '@capgo/capacitor-native-biometric';
+import { NativeBiometric, BiometryType, AvailableResult } from '@capgo/capacitor-native-biometric';
 import { Device, DeviceInfo } from '@capacitor/device';
 import { Capacitor } from '@capacitor/core';
 import { supabase, tables } from '../config/supabase';
@@ -7,7 +7,7 @@ import { logger } from '../utils/debugLogger';
 export interface BiometricCapabilities {
   isAvailable: boolean;
   biometryType: BiometryType;
-  errorType?: BiometryErrorType;
+  errorCode?: number;
   reason?: string;
 }
 
@@ -48,7 +48,7 @@ class BiometricsService {
         };
       }
     } catch (error) {
-      logger.error('Failed to initialize biometrics service', error);
+      logger.error('Failed to initialize biometrics service', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -63,18 +63,18 @@ class BiometricsService {
         };
       }
 
-      const result = await NativeBiometric.isAvailable();
+      const result: AvailableResult = await NativeBiometric.isAvailable();
       
       logger.auth('Biometric capabilities checked', result);
       
       return {
         isAvailable: result.isAvailable,
         biometryType: result.biometryType,
-        errorType: result.errorType,
-        reason: result.errorType ? `Error: ${result.errorType}` : undefined
+        errorCode: result.errorCode,
+        reason: result.errorCode ? `Error code: ${result.errorCode}` : undefined
       };
     } catch (error) {
-      logger.error('Failed to check biometric capabilities', error);
+      logger.error('Failed to check biometric capabilities', error instanceof Error ? error : new Error(String(error)));
       return {
         isAvailable: false,
         biometryType: BiometryType.NONE,
@@ -103,7 +103,7 @@ class BiometricsService {
       await this.updateLastActive();
       return true;
     } catch (error) {
-      logger.error('Biometric authentication failed', error);
+      logger.error('Biometric authentication failed', error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -133,7 +133,7 @@ class BiometricsService {
       };
 
       // Register device in database
-      const { data, error } = await supabase.rpc('register_device_session', {
+      const { error } = await supabase.rpc('register_device_session', {
         p_user_id: userId,
         p_device_id: deviceId,
         p_device_name: sessionData.device_name,
@@ -144,7 +144,7 @@ class BiometricsService {
       });
 
       if (error) {
-        logger.error('Failed to register device session', error);
+        logger.error('Failed to register device session', error instanceof Error ? error : new Error(String(error)));
         return null;
       }
 
@@ -153,7 +153,7 @@ class BiometricsService {
       
       return sessionData;
     } catch (error) {
-      logger.error('Failed to register device', error);
+      logger.error('Failed to register device', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -186,7 +186,7 @@ class BiometricsService {
         .eq('device_id', deviceId);
 
       if (error) {
-        logger.error('Failed to enable biometrics in database', error);
+        logger.error('Failed to enable biometrics in database', error instanceof Error ? error : new Error(String(error)));
         return false;
       }
 
@@ -200,13 +200,13 @@ class BiometricsService {
         .eq('user_id', userId);
 
       if (settingsError) {
-        logger.error('Failed to update user settings for biometrics', settingsError);
+        logger.error('Failed to update user settings for biometrics', settingsError instanceof Error ? settingsError : new Error(String(settingsError)));
       }
 
       logger.auth('Biometrics enabled successfully');
       return true;
     } catch (error) {
-      logger.error('Failed to enable biometrics', error);
+      logger.error('Failed to enable biometrics', error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -226,7 +226,7 @@ class BiometricsService {
         .eq('device_id', deviceId);
 
       if (error) {
-        logger.error('Failed to disable biometrics in database', error);
+        logger.error('Failed to disable biometrics in database', error instanceof Error ? error : new Error(String(error)));
         return false;
       }
 
@@ -240,13 +240,13 @@ class BiometricsService {
         .eq('user_id', userId);
 
       if (settingsError) {
-        logger.error('Failed to update user settings for biometrics', settingsError);
+        logger.error('Failed to update user settings for biometrics', settingsError instanceof Error ? settingsError : new Error(String(settingsError)));
       }
 
       logger.auth('Biometrics disabled successfully');
       return true;
     } catch (error) {
-      logger.error('Failed to disable biometrics', error);
+      logger.error('Failed to disable biometrics', error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -260,13 +260,13 @@ class BiometricsService {
         .single();
 
       if (error) {
-        logger.error('Failed to check biometric settings', error);
+        logger.error('Failed to check biometric settings', error instanceof Error ? error : new Error(String(error)));
         return false;
       }
 
       return data?.biometrics_enabled || false;
     } catch (error) {
-      logger.error('Failed to check biometric settings', error);
+      logger.error('Failed to check biometric settings', error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -280,13 +280,13 @@ class BiometricsService {
         .order('last_active', { ascending: false });
 
       if (error) {
-        logger.error('Failed to get user devices', error);
+        logger.error('Failed to get user devices', error instanceof Error ? error : new Error(String(error)));
         return [];
       }
 
       return data || [];
     } catch (error) {
-      logger.error('Failed to get user devices', error);
+      logger.error('Failed to get user devices', error instanceof Error ? error : new Error(String(error)));
       return [];
     }
   }
@@ -304,10 +304,10 @@ class BiometricsService {
         .eq('device_id', this.currentSession.device_id);
 
       if (error) {
-        logger.error('Failed to update last active', error);
+        logger.error('Failed to update last active', error instanceof Error ? error : new Error(String(error)));
       }
     } catch (error) {
-      logger.error('Failed to update last active', error);
+      logger.error('Failed to update last active', error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -326,7 +326,7 @@ class BiometricsService {
         return webDeviceId;
       }
     } catch (error) {
-      logger.error('Failed to get device ID', error);
+      logger.error('Failed to get device ID', error instanceof Error ? error : new Error(String(error)));
       return 'unknown_device_' + Date.now();
     }
   }
@@ -359,10 +359,12 @@ class BiometricsService {
       case BiometryType.FINGERPRINT:
         return 'fingerprint';
       case BiometryType.FACE_ID:
-      case BiometryType.FACE:
+      case BiometryType.FACE_AUTHENTICATION:
         return 'face_id';
-      case BiometryType.IRIS:
+      case BiometryType.IRIS_AUTHENTICATION:
         return 'voice'; // Map iris to voice as closest alternative
+      case BiometryType.MULTIPLE:
+        return 'fingerprint'; // Default to fingerprint for multiple types
       default:
         return 'none';
     }

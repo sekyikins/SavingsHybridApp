@@ -69,24 +69,6 @@
   font-size: 1.1rem;
 }
 
-/* Progress Details */
-.progress-details {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.detail-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 8px;
-  background: var(--ion-color-light);
-  border-radius: 8px;
-}
-
 .detail-item ion-text:first-child {
   font-size: 0.75rem;
   margin-bottom: 4px;
@@ -212,6 +194,14 @@
   font-size: 0.85rem;
   color: var(--ion-color-medium);
   margin: 0;
+}
+
+.transaction-count {
+  display: flex;
+  flex-direction: column;
+  align-items: end;
+  width: 20%;
+  gap: 5px;
 }
 
 /* Dark Mode Adjustments */

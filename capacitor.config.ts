@@ -12,18 +12,17 @@ const config: CapacitorConfig = {
   plugins: {
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert']
+    },
+    StatusBar: {
+      style: 'DARK',
+      overlay: true
     }
   },
   ios: {
     preferredContentMode: 'mobile',
     scrollEnabled: true,
-    hideLogs: false,
-    allowsLinkPreview: true,
-    scrollToInput: true,
-    statusBar: {
-      style: 'DARK',
-      overlay: true
-    }
+    loggingBehavior: 'debug',
+    allowsLinkPreview: true
   },
   android: {
     allowMixedContent: true,

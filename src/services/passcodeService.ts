@@ -25,13 +25,13 @@ class PasscodeService {
         .single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-        logger.error('Failed to check passcode existence', error);
+        logger.error('Failed to check passcode existence', error instanceof Error ? error : new Error(String(error)));
         return false;
       }
 
       return !!data;
     } catch (error) {
-      logger.error('Failed to check passcode existence', error);
+      logger.error('Failed to check passcode existence', error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -62,7 +62,7 @@ class PasscodeService {
       });
 
       if (error) {
-        logger.error('Failed to setup passcode', error);
+        logger.error('Failed to setup passcode', error instanceof Error ? error : new Error(String(error)));
         return {
           success: false,
           error: 'Failed to setup passcode'
@@ -72,7 +72,7 @@ class PasscodeService {
       logger.auth('Passcode setup successfully', { userId });
       return { success: true };
     } catch (error) {
-      logger.error('Failed to setup passcode', error);
+      logger.error('Failed to setup passcode', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: 'Failed to setup passcode'
@@ -107,7 +107,7 @@ class PasscodeService {
       });
 
       if (error) {
-        logger.error('Failed to change passcode', error);
+        logger.error('Failed to change passcode', error instanceof Error ? error : new Error(String(error)));
         return {
           success: false,
           error: 'Failed to change passcode'
@@ -117,7 +117,7 @@ class PasscodeService {
       logger.auth('Passcode changed successfully', { userId });
       return { success: true };
     } catch (error) {
-      logger.error('Failed to change passcode', error);
+      logger.error('Failed to change passcode', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: 'Failed to change passcode'
@@ -141,7 +141,7 @@ class PasscodeService {
       });
 
       if (lockError) {
-        logger.error('Failed to check passcode lock status', lockError);
+        logger.error('Failed to check passcode lock status', lockError instanceof Error ? lockError : new Error(String(lockError)));
         return {
           success: false,
           error: 'Failed to verify passcode'
@@ -164,7 +164,7 @@ class PasscodeService {
       });
 
       if (verifyError) {
-        logger.error('Failed to verify passcode', verifyError);
+        logger.error('Failed to verify passcode', verifyError instanceof Error ? verifyError : new Error(String(verifyError)));
         return {
           success: false,
           error: 'Failed to verify passcode'
@@ -204,7 +204,7 @@ class PasscodeService {
         };
       }
     } catch (error) {
-      logger.error('Failed to verify passcode', error);
+      logger.error('Failed to verify passcode', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: 'Failed to verify passcode'
@@ -222,7 +222,7 @@ class PasscodeService {
         .eq('user_id', userId);
 
       if (error) {
-        logger.error('Failed to reset passcode', error);
+        logger.error('Failed to reset passcode', error instanceof Error ? error : new Error(String(error)));
         return {
           success: false,
           error: 'Failed to reset passcode'
@@ -232,7 +232,7 @@ class PasscodeService {
       logger.auth('Passcode reset successfully', { userId });
       return { success: true };
     } catch (error) {
-      logger.error('Failed to reset passcode', error);
+      logger.error('Failed to reset passcode', error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: 'Failed to reset passcode'
@@ -280,7 +280,7 @@ class PasscodeService {
         attemptsRemaining
       };
     } catch (error) {
-      logger.error('Failed to get passcode status', error);
+      logger.error('Failed to get passcode status', error instanceof Error ? error : new Error(String(error)));
       return {
         hasPasscode: false,
         isLocked: false,

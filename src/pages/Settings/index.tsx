@@ -13,7 +13,9 @@ import {
   IonNote,
   useIonAlert,
   useIonToast,
-  IonListHeader
+  IonListHeader,
+  IonRefresher,
+  IonRefresherContent
 } from '@ionic/react';
 import { 
   moon, 
@@ -38,6 +40,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useBiometrics } from '../../hooks/useBiometrics';
 import { passcodeService } from '../../services/passcodeService';
 import { logger } from '../../utils/debugLogger';
+import { BiometryType } from '@capgo/capacitor-native-biometric';
 import './Settings.css';
 
 interface UserProfile {
@@ -110,6 +113,17 @@ const SettingsPage: React.FC = () => {
   
   // Get user from auth context and fetch additional profile data
   const { user: authUser, loading: authLoading } = useAuth();
+  
+  // Biometrics integration
+  const {
+    isEnabled: biometricsEnabled,
+    capabilities: biometricCapabilities,
+    isLoading: biometricsLoading,
+    error: biometricsError,
+    enableBiometrics,
+    disableBiometrics,
+    clearError: clearBiometricsError
+  } = useBiometrics();
   
   // Component mount logging
   React.useEffect(() => {
@@ -313,128 +327,20 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleDeleteAccount = () => {
-    presentAlert({
-      header: 'Delete Account',
-      message: 'This action cannot be undone. All your data will be permanently deleted.',
-      inputs: [
-        {
-          name: 'confirmText',
-          type: 'text',
-          placeholder: 'Type "DELETE" to confirm',
-          attributes: {
-            required: true
-          }
-        }
-      ],
-      buttons: [
-        'Cancel',
-        {
-          text: 'Delete',
-          role: 'destructive',
-          handler: async (data: { confirmText: string }) => {
-            if (data.confirmText === 'DELETE') {
-              try {
-                // In a real app, call your account deletion API here
-                // await deleteAccount();
-                
-                // Sign out after deletion
-                const { error: signOutError } = await signOut();
-                if (signOutError) {
-                  console.error('Sign out after deletion error:', signOutError);
-                  presentToast({
-                    message: signOutError.message || 'Failed to sign out after account deletion',
-                    duration: 3000,
-                    position: 'top',
-                    color: 'danger'
-                  });
-                  return false;
-                }
-                
-                presentToast({
-                  message: 'Account deleted successfully',
-                  duration: 2000,
-                  position: 'top',
-                  color: 'success'
-                });
-                
-                history.replace('/auth');
-              } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : 'Failed to delete account';
-                console.error('Account deletion error:', errorMessage);
-                presentToast({
-                  message: errorMessage,
-                  duration: 3000,
-                  position: 'top',
-                  color: 'danger'
-                });
-                return false;
-              }
-            } else {
-              presentToast({
-                message: 'Please type DELETE to confirm',
-                position: 'top',
-                duration: 2000,
-                color: 'warning'
-              });
-              return false;
-            }
-          }
-        }
-      ]
-    });
-  };
-
   const handleChangePasscode = async () => {
-    const { present } = useIonAlert();
-    const [showAlert, setShowAlert] = useState(false);
-    const [passcode, setPasscode] = useState('');
-    const [confirmPasscode, setConfirmPasscode] = useState('');
-
-    const handlePasscodeChange = (event: CustomEvent) => {
-      setPasscode(event.detail.value);
-    };
-
-    const handleConfirmPasscodeChange = (event: CustomEvent) => {
-      setConfirmPasscode(event.detail.value);
-    };
-
-    const handleSavePasscode = async () => {
-      if (passcode !== confirmPasscode) {
-        presentToast({
-          message: 'Passcodes do not match',
-          duration: 2000,
-          position: 'top',
-          color: 'danger'
-        });
-        return;
-      }
-
-      try {
-        await passcodeService.setPasscode(passcode);
-        presentToast({
-          message: 'Passcode changed successfully',
-          duration: 2000,
-          position: 'top',
-          color: 'success'
-        });
-      } catch (error) {
-        presentToast({
-          message: 'Failed to change passcode',
-          duration: 2000,
-          position: 'top',
-          color: 'danger'
-        });
-      }
-    };
-
-    setShowAlert(true);
-
-    present({
+    presentAlert({
       header: 'Change Passcode',
       inputs: [
         {
-          name: 'passcode',
+          name: 'currentPasscode',
+          type: 'password',
+          placeholder: 'Enter current passcode',
+          attributes: {
+            required: true
+          }
+        },
+        {
+          name: 'newPasscode',
           type: 'password',
           placeholder: 'Enter new passcode',
           attributes: {
@@ -454,11 +360,138 @@ const SettingsPage: React.FC = () => {
         'Cancel',
         {
           text: 'Save',
-          handler: handleSavePasscode
+          handler: async (data) => {
+            const { currentPasscode, newPasscode, confirmPasscode } = data;
+            
+            if (!currentPasscode || currentPasscode.length !== 6) {
+              presentToast({
+                message: 'Current passcode must be 6 digits',
+                duration: 2000,
+                position: 'top',
+                color: 'danger'
+              });
+              return false; // Keep alert open
+            }
+            
+            if (newPasscode !== confirmPasscode) {
+              presentToast({
+                message: 'New passcodes do not match',
+                duration: 2000,
+                position: 'top',
+                color: 'danger'
+              });
+              return false; // Keep alert open
+            }
+
+            if (!newPasscode || newPasscode.length !== 6) {
+              presentToast({
+                message: 'New passcode must be 6 digits',
+                duration: 2000,
+                position: 'top',
+                color: 'danger'
+              });
+              return false; // Keep alert open
+            }
+
+            if (currentPasscode === newPasscode) {
+              presentToast({
+                message: 'New passcode must be different from current passcode',
+                duration: 2000,
+                position: 'top',
+                color: 'danger'
+              });
+              return false; // Keep alert open
+            }
+
+            try {
+              const result = await passcodeService.changePasscode(authUser?.id || '', currentPasscode, newPasscode);
+              
+              if (result.success) {
+                presentToast({
+                  message: 'Passcode changed successfully',
+                  duration: 2000,
+                  position: 'top',
+                  color: 'success'
+                });
+                return true; // Close alert
+              } else {
+                presentToast({
+                  message: result.error || 'Failed to change passcode',
+                  duration: 2000,
+                  position: 'top',
+                  color: 'danger'
+                });
+                return false; // Keep alert open
+              }
+            } catch (error) {
+              presentToast({
+                message: 'Failed to change passcode',
+                duration: 2000,
+                position: 'top',
+                color: 'danger'
+              });
+              return false; // Keep alert open
+            }
+          }
         }
-      ],
-      onWillDismiss: () => setShowAlert(false)
+      ]
     });
+  };
+
+  const handleDeleteAccount = async () => {
+    presentAlert({
+      header: 'Delete Account',
+      message: 'Are you sure you want to permanently delete your account? This action cannot be undone and will remove all your data.',
+      buttons: [
+        {
+          text: 'Cancel',
+          role: 'cancel'
+        },
+        {
+          text: 'Delete',
+          role: 'destructive',
+          handler: async () => {
+            try {
+              // TODO: Implement account deletion logic
+              // This would typically involve:
+              // 1. Deleting user data from database
+              // 2. Deleting user from Supabase auth
+              // 3. Clearing local storage
+              
+              presentToast({
+                message: 'Account deletion is not yet implemented',
+                duration: 3000,
+                position: 'top',
+                color: 'warning'
+              });
+              
+              // For now, just sign out
+              await handleSignOut();
+            } catch (error) {
+              console.error('Error deleting account:', error);
+              presentToast({
+                message: 'Failed to delete account. Please try again.',
+                duration: 2000,
+                position: 'top',
+                color: 'danger'
+              });
+            }
+          }
+        }
+      ]
+    });
+  };
+
+  const handleRefresh = async (event: CustomEvent) => {
+    logger.navigation('Pull-to-refresh triggered on Settings page');
+    try {
+      // Add your refresh logic here
+      logger.navigation('Settings page data refreshed successfully');
+    } catch (error) {
+      logger.error('Error refreshing Settings page data', error instanceof Error ? error : new Error(String(error)));
+    } finally {
+      event.detail.complete();
+    }
   };
 
   logger.auth('Settings page rendering main content', { 
@@ -475,6 +508,14 @@ const SettingsPage: React.FC = () => {
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
+        <IonRefresher onIonRefresh={handleRefresh}>
+          <IonRefresherContent
+            pullingIcon="chevron-down-circle-outline"
+            pullingText="Pull to refresh"
+            refreshingSpinner="circles"
+            refreshingText="Refreshing..."
+          />
+        </IonRefresher>
         <div className="settings-container">
           {/* Profile Section */}
           <div className="profile-header">
@@ -517,12 +558,66 @@ const SettingsPage: React.FC = () => {
                 <IonIcon icon={fingerPrint} color="warning" slot="start" />
                 <IonLabel>
                   <h3>Biometric Authentication</h3>
-                  <IonNote>Use fingerprint or face ID</IonNote>
+                  <IonNote>
+                    {biometricCapabilities?.isAvailable 
+                      ? `Use ${biometricCapabilities.biometryType === BiometryType.FACE_ID ? 'Face ID' : 'fingerprint'} authentication`
+                      : 'Biometrics not available on this device'
+                    }
+                  </IonNote>
                 </IonLabel>
                 <IonToggle 
                   slot="end" 
-                  checked={settings.biometricAuth} 
-                  onIonChange={() => toggleSetting('biometricAuth')} 
+                  checked={biometricsEnabled} 
+                  disabled={!biometricCapabilities?.isAvailable || biometricsLoading}
+                  onIonChange={async () => {
+                    try {
+                      if (biometricsEnabled) {
+                        const success = await disableBiometrics();
+                        if (success) {
+                          presentToast({
+                            message: 'Biometric authentication disabled',
+                            duration: 2000,
+                            position: 'top',
+                            color: 'success'
+                          });
+                        } else {
+                          presentToast({
+                            message: 'Failed to disable biometric authentication',
+                            duration: 2000,
+                            position: 'top',
+                            color: 'danger'
+                          });
+                        }
+                      } else {
+                        const success = await enableBiometrics();
+                        if (success) {
+                          presentToast({
+                            message: 'Biometric authentication enabled',
+                            duration: 2000,
+                            position: 'top',
+                            color: 'success'
+                          });
+                        } else {
+                          presentToast({
+                            message: biometricsError || 'Failed to enable biometric authentication',
+                            duration: 3000,
+                            position: 'top',
+                            color: 'danger'
+                          });
+                        }
+                      }
+                      if (biometricsError) {
+                        clearBiometricsError();
+                      }
+                    } catch (error) {
+                      presentToast({
+                        message: 'Error toggling biometric authentication',
+                        duration: 2000,
+                        position: 'top',
+                        color: 'danger'
+                      });
+                    }
+                  }} 
                 />
               </IonItem>
             </IonList>

@@ -12,7 +12,9 @@ import {
   IonCardHeader,
   IonCardTitle,
   IonCardContent,
-  IonSpinner
+  IonSpinner,
+  IonRefresher,
+  IonRefresherContent
 } from '@ionic/react';
 import { eyeOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
@@ -26,7 +28,7 @@ import './Home.css';
 const Home: React.FC = () => {
   const history = useHistory();
   const { user, loading: authLoading } = useAuth();
-  const { transactions, error } = useTransactions();
+  const { transactions, error, refreshTransactions, isLoading } = useTransactions();
   const { savingsGoals } = useSettings();
   const now = new Date();
   
@@ -56,12 +58,14 @@ const Home: React.FC = () => {
     
     // Use localStorage to match MonthlyProgress page
     const savedTarget = localStorage.getItem('monthlyTarget');
-    const monthlyGoal = savedTarget ? parseFloat(savedTarget) : 4000; // Default target
-    const progress = monthlyGoal > 0 ? Math.min(stats.totalDeposits / monthlyGoal, 1) : 0;
+    const monthlyGoal = savedTarget ? parseFloat(savedTarget) : 0; // Default target to 0
+    const netTotal = stats.totalDeposits - stats.totalWithdrawals; // Net total (deposits - withdrawals)
+    const progress = monthlyGoal > 0 && netTotal > 0 ? Math.min(netTotal / monthlyGoal, 1) : 0; // Progress based on net total, 0% if net is negative
     
     logger.data('Home monthly stats calculated', {
       totalDeposits: stats.totalDeposits,
       totalWithdrawals: stats.totalWithdrawals,
+      netTotal,
       progress: progress * 100
     });
     
@@ -80,12 +84,14 @@ const Home: React.FC = () => {
     const weekStart = dataIntegrationService.getCurrentWeekStart(now);
     const stats = dataIntegrationService.getWeeklyStats(weekStart, transactions);
     
-    const weeklyGoal = savingsGoals?.weeklyGoal || 250;
-    const progress = weeklyGoal > 0 ? Math.min(stats.totalDeposits / weeklyGoal, 1) : 0;
+    const weeklyGoal = savingsGoals?.weeklyGoal || 0; // Default to 0
+    const netTotal = stats.totalDeposits - stats.totalWithdrawals; // Net total (deposits - withdrawals)
+    const progress = weeklyGoal > 0 && netTotal > 0 ? Math.min(netTotal / weeklyGoal, 1) : 0; // Progress based on net total, 0% if net is negative
     
     logger.data('Home weekly stats calculated', {
       totalDeposits: stats.totalDeposits,
       totalWithdrawals: stats.totalWithdrawals,
+      netTotal,
       progress: progress * 100
     });
     
@@ -99,8 +105,20 @@ const Home: React.FC = () => {
     };
   }, [transactions, now, savingsGoals?.weeklyGoal]);
 
+  const handleRefresh = async (event: CustomEvent) => {
+    logger.navigation('Pull-to-refresh triggered on Home page');
+    try {
+      await refreshTransactions();
+      logger.navigation('Home page data refreshed successfully');
+    } catch (error) {
+      logger.error('Error refreshing Home page data', error instanceof Error ? error : new Error(String(error)));
+    } finally {
+      event.detail.complete();
+    }
+  };
+
   // Show loading state while authentication is being determined
-  if (authLoading) {
+  if (authLoading || isLoading) {
     return (
       <IonPage>
         <IonHeader>
@@ -148,6 +166,14 @@ const Home: React.FC = () => {
       </IonHeader>
       
       <IonContent fullscreen className="ion-padding">
+        <IonRefresher onIonRefresh={handleRefresh}>
+          <IonRefresherContent
+            pullingIcon="chevron-down-circle-outline"
+            pullingText="Pull to refresh"
+            refreshingSpinner="circles"
+            refreshingText="Refreshing..."
+          />
+        </IonRefresher>
         <div className="dashboard-container">
           {/* Monthly Progress Card */}
           <IonCard 

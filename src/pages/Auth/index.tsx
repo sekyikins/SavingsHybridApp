@@ -15,6 +15,8 @@ import {
 import { logoGoogle, logoApple } from 'ionicons/icons';
 import './Auth.css';
 import { supabase } from '../../config/supabase';
+import { databaseService } from '../../services/databaseService';
+import { logger } from '../../utils/debugLogger'; // Fixed import path
 
 interface FormData {
   email: string;
@@ -193,11 +195,34 @@ const AuthPage: React.FC = () => {
           showAlertMessage(errorMessage, 'error');
         }
       } else if (!isLogin) {
-        // Success message for signup
-        showToastNotification('Account created successfully! Welcome!', 'success');
+        // Success message for signup - redirect to passcode setup
+        logger.auth('Signup successful, preparing passcode setup redirect', {
+          userId: result.data?.user?.id,
+          hasSession: !!result.data?.session,
+          userEmail: result.data?.user?.email
+        });
+        
+        showToastNotification('Account created successfully! Please set up your passcode.', 'success');
+        
+        // Redirect to passcode setup immediately without delay
+        logger.auth('Redirecting to passcode setup immediately');
+        history.replace('/auth/passcode-setup');
+        
       } else {
-        // Success message for signin
-        showToastNotification('Welcome back!', 'success');
+        // Success message for signin - check if user has passcode
+        const currentUser = result.data.user || user;
+        if (currentUser) {
+          const hasPasscode = await databaseService.hasUserPasscode(currentUser.id);
+          if (hasPasscode) {
+            // User has passcode, redirect to passcode verification
+            history.replace('/auth/passcode-verify');
+          } else {
+            // User doesn't have passcode, redirect to setup
+            history.replace('/auth/passcode-setup');
+          }
+        } else {
+          showToastNotification('Welcome back!', 'success');
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
@@ -209,26 +234,51 @@ const AuthPage: React.FC = () => {
 
   // Prevent going back to auth page if already authenticated - ALWAYS call this hook
   useEffect(() => {
-    // If user is already authenticated, redirect to home
-    if (isAuthenticated) {
-      history.replace(from);
-      return;
-    }
-
-    // Prevent back navigation
-    const unblock = history.block((tx: { pathname: string }) => {
-      // Allow navigation to any route except back
-      if (tx.pathname === '/auth') {
-        return false;
+    // If user is already authenticated, check if they need passcode setup
+    const checkAuthRedirect = async () => {
+      if (isAuthenticated && user) {
+        logger.auth('Auth useEffect triggered', { 
+          pathname: location.pathname, 
+          isAuthenticated, 
+          userId: user.id 
+        });
+        
+        // Add a small delay to allow signup redirect to happen first
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Check if we're currently on a passcode-related page
+        if (location.pathname && location.pathname.includes('/auth/passcode')) {
+          logger.auth('Already on passcode page, skipping redirect', { pathname: location.pathname });
+          return; // Don't redirect if already on passcode pages
+        }
+        
+        // Check if user has a passcode set up
+        try {
+          const hasPasscode = await databaseService.hasUserPasscode(user.id);
+          logger.auth('Passcode check result', { hasPasscode, userId: user.id });
+          
+          if (!hasPasscode) {
+            // User needs passcode setup, redirect there
+            logger.auth('Redirecting to passcode setup from useEffect');
+            history.replace('/auth/passcode-setup');
+            return;
+          }
+        } catch (error) {
+          logger.error('Error checking passcode status', error instanceof Error ? error : undefined);
+        }
+        
+        // User has passcode or check failed, redirect to home
+        logger.auth('Redirecting to home from useEffect');
+        history.replace(from);
+        return;
       }
-      return true;
-    });
-
-    // Cleanup function
-    return () => {
-      unblock();
     };
-  }, [history, isAuthenticated, from]);
+
+    // Only run this check if we're not in the middle of processing a signup
+    if (!isProcessing) {
+      checkAuthRedirect();
+    }
+  }, [isAuthenticated, user, from, history, location.pathname, isProcessing]);
 
   // Show error alert if authentication fails - ALWAYS call this hook
   useEffect(() => {

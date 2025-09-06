@@ -67,6 +67,31 @@
   --ion-color-light-contrast-rgb: 0, 0, 0;
   --ion-color-light-shade: #d7d8da;
   --ion-color-light-tint: #f5f6f9;
+
+  /** Alert styling for light theme **/
+  --ion-alert-background: #ffffff;
+  --ion-alert-border-radius: 12px;
+  --ion-alert-box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --ion-alert-max-width: 320px;
+  
+  /* Alert header */
+  --ion-alert-header-color: #000000;
+  --ion-alert-header-font-size: 18px;
+  --ion-alert-header-font-weight: 600;
+  
+  /* Alert message */
+  --ion-alert-message-color: #666666;
+  --ion-alert-message-font-size: 14px;
+  
+  /* Alert buttons */
+  --ion-alert-button-color: var(--ion-color-primary);
+  --ion-alert-button-font-weight: 500;
+  
+  /* Alert inputs */
+  --ion-alert-input-background: #f8f9fa;
+  --ion-alert-input-border-color: #e0e0e0;
+  --ion-alert-input-text-color: #000000;
+  --ion-alert-input-placeholder-color: #999999;
 }
 
 /* Dark theme overrides */
@@ -97,6 +122,25 @@
     --ion-color-step-850: #dbdbdb;
     --ion-color-step-900: #e7e7e7;
     --ion-color-step-950: #f3f3f3;
+
+    /** Alert styling for dark theme **/
+    --ion-alert-background: #2d2d2d;
+    --ion-alert-box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    
+    /* Alert header */
+    --ion-alert-header-color: #ffffff;
+    
+    /* Alert message */
+    --ion-alert-message-color: #cccccc;
+    
+    /* Alert buttons */
+    --ion-alert-button-color: var(--ion-color-primary-tint);
+    
+    /* Alert inputs */
+    --ion-alert-input-background: #3a3a3a;
+    --ion-alert-input-border-color: #555555;
+    --ion-alert-input-text-color: #ffffff;
+    --ion-alert-input-placeholder-color: #888888;
   }
 
   .ios body {

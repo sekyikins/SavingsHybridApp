@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { databaseService } from '../services/databaseService';
+import { UserSettings, UserProfile } from '../config/supabase';
 
 type SavingsRecord = {
   id?: string;
@@ -8,24 +9,6 @@ type SavingsRecord = {
   date: string;
   amount: number;
   saved: boolean;
-  updated_at?: string;
-};
-
-type UserSettings = {
-  id?: string;
-  user_id: string;
-  currency: string;
-  daily_goal: number;
-  starting_day_of_week: 'SUN' | 'MON';
-  theme: 'light' | 'dark' | 'system';
-  created_at?: string;
-  updated_at?: string;
-};
-
-type UserProfile = {
-  id?: string;
-  user_id: string;
-  username?: string;
   updated_at?: string;
 };
 

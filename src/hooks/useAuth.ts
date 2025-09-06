@@ -93,7 +93,7 @@ export function useAuth() {
             username: username || '',
             firstName: userData?.firstName || '',
             lastName: userData?.lastName || '',
-            full_name: username || ''
+            full_name: userData?.firstName && userData?.lastName ? `${userData.firstName} ${userData.lastName}` : username || ''
           },
           emailRedirectTo: `${window.location.origin}/auth/callback`
         }
@@ -146,11 +146,12 @@ export function useAuth() {
           userEmail: data.user.email,
           emailConfirmed: data.user.email_confirmed_at
         });
+        
+        // Since email confirmation is disabled in your Supabase config,
+        // this is actually a successful signup - return success to trigger passcode setup
         return {
           data,
-          error: {
-            message: 'Account created successfully! You can now sign in with your credentials.'
-          }
+          error: null
         };
       }
       

@@ -75,9 +75,44 @@ class DataIntegrationService {
     const targetDate = new Date(date);
     const dateStr = targetDate.toISOString().split('T')[0];
 
+    logger.data('Processing day data', { 
+      inputDate: date, 
+      targetDateStr: dateStr, 
+      totalTransactions: transactions.length,
+      sampleTransactionDates: transactions.slice(0, 3).map(tx => ({
+        id: tx.id,
+        transaction_date: tx.transaction_date,
+        parsedDate: new Date(tx.transaction_date).toISOString().split('T')[0],
+        type: tx.transaction_type,
+        amount: tx.amount
+      }))
+    });
+
     const dayTransactions = transactions.filter(tx => {
       const txDateStr = new Date(tx.transaction_date).toISOString().split('T')[0];
-      return txDateStr === dateStr;
+      const matches = txDateStr === dateStr;
+      if (matches) {
+        logger.data('Transaction matches date', { 
+          txId: tx.id, 
+          txDate: tx.transaction_date, 
+          txDateStr, 
+          targetDateStr: dateStr,
+          type: tx.transaction_type,
+          amount: tx.amount
+        });
+      }
+      return matches;
+    });
+
+    logger.data('Filtered transactions for date', { 
+      date: dateStr, 
+      matchingTransactions: dayTransactions.length,
+      transactions: dayTransactions.map(tx => ({
+        id: tx.id,
+        type: tx.transaction_type,
+        amount: tx.amount,
+        date: tx.transaction_date
+      }))
     });
 
     const deposits = dayTransactions
@@ -105,6 +140,7 @@ class DataIntegrationService {
       date, 
       deposits, 
       withdrawals, 
+      netAmount: deposits - withdrawals,
       transactionCount: dayTransactions.length 
     });
 
