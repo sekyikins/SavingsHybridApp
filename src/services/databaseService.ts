@@ -31,7 +31,7 @@ const cryptoUtils = {
     // Import the password as a key
     const key = await crypto.subtle.importKey(
       'raw',
-      passwordArray,
+      passwordArray as BufferSource,
       { name: 'PBKDF2' },
       false,
       ['deriveBits']
@@ -41,7 +41,7 @@ const cryptoUtils = {
     const derivedBits = await crypto.subtle.deriveBits(
       {
         name: 'PBKDF2',
-        salt: saltArray,
+        salt: saltArray as BufferSource,
         iterations: iterations,
         hash: 'SHA-512'
       },
@@ -314,22 +314,49 @@ export const databaseService = {
     try {
       logger.supabase('Updating user profile', { userId: profile.user_id });
       
+      // First, check if profile exists
+      const { data: existingProfile } = await supabase
+        .from(tables.user_profiles)
+        .select('*')
+        .eq('user_id', profile.user_id)
+        .single();
+
       const updates = {
         ...profile,
         updated_at: new Date().toISOString()
       };
 
-      const { data, error } = await supabase
-        .from(tables.user_profiles)
-        .upsert(updates)
-        .select()
-        .single();
+      let data, error;
+      
+      if (existingProfile) {
+        // Update existing record
+        const result = await supabase
+          .from(tables.user_profiles)
+          .update(updates)
+          .eq('user_id', profile.user_id)
+          .select()
+          .single();
+        
+        data = result.data;
+        error = result.error;
+      } else {
+        // Insert new record
+        const result = await supabase
+          .from(tables.user_profiles)
+          .insert(updates)
+          .select()
+          .single();
+        
+        data = result.data;
+        error = result.error;
+      }
 
       if (error || !data) {
         logger.error('Error updating user profile', error instanceof Error ? error : error ? new Error(String(error)) : undefined, { profile });
         throw error instanceof Error ? error : error ? new Error(String(error)) : new Error('Failed to update user profile');
       }
 
+      logger.supabase('User profile updated successfully', { userId: profile.user_id });
       return data as UserProfile;
     } catch (error) {
       logger.error('Error in updateUserProfile', error instanceof Error ? error : new Error(String(error)), { profile });

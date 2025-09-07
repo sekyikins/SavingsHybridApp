@@ -33,15 +33,6 @@ import { logger } from '../../utils/debugLogger';
 import { dataIntegrationService } from '../../services/dataIntegrationService';
 import './Calendar.css';
 
-interface CalendarDay {
-  date: string;
-  isToday: boolean;
-  isWeekend: boolean;
-  isCurrentMonth: boolean;
-  deposit?: number;
-  withdrawal?: number;
-}
-
 interface CalendarState {
   currentDate: Date;
   viewMode: 'month' | 'week';

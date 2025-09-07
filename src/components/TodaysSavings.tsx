@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { formatDate } from '../utils/dateUtils';
-// import { formatCurrency } from '../utils/currency';
+import { formatCurrency } from '../utils/currencyUtils';
 import { SavingsRecord } from '../types/supabase';
 import { SavingsReminder } from './SavingsReminder';
-import { useSettings } from './Settings';
+import { useSettings } from '../hooks/useSettings';
 
 interface TodaysSavingsProps {
   savings: SavingsRecord[];
@@ -12,11 +12,10 @@ interface TodaysSavingsProps {
   onError: (message: string) => void;
 }
 
-export function TodaysSavings({ savings, onSave, onSuccess, onError }: TodaysSavingsProps) {
+const TodaysSavings: React.FC<TodaysSavingsProps> = ({ savings, onSave, onSuccess, onError }) => {
   const [loading, setLoading] = useState(false);
   const [lastNotificationTime, setLastNotificationTime] = useState<Date | null>(null);
-  const settingsContext = useSettings();
-  const settings = settingsContext?.settings || { currency: 'GHS', currencySymbol: '₵' };
+  const { settings: userSettings } = useSettings();
   const today = formatDate(new Date());
   const todayRecord = savings.find(record => record.date === today);
 
@@ -87,7 +86,7 @@ export function TodaysSavings({ savings, onSave, onSuccess, onError }: TodaysSav
             type="number" 
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder={`Amount saved (${settings.currency})`} 
+            placeholder={`Amount saved (${formatCurrency(0, userSettings?.currency || 'GHS').replace('0', '0.00')})`} 
             className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             step="0.01" 
             min="0"
@@ -109,4 +108,6 @@ export function TodaysSavings({ savings, onSave, onSuccess, onError }: TodaysSav
       </div>
     </>
   );
-}
+};
+
+export default TodaysSavings;

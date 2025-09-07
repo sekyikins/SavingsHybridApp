@@ -1,7 +1,8 @@
 import { formatDate, getWeekStart, isToday } from '../utils/dateUtils';
 import { Transaction } from '../config/supabase';
-import { useSettings } from './Settings';
+import { useSettings } from '../hooks/useSettings';
 import { dataIntegrationService } from '../services/dataIntegrationService';
+import { formatCurrency } from '../utils/currencyUtils';
 
 interface CalendarProps {
   transactions: Transaction[];
@@ -12,21 +13,21 @@ interface CalendarProps {
   onBackToToday: () => void;
 }
 
-export function Calendar({ 
+const Calendar: React.FC<CalendarProps> = ({ 
   transactions, 
   currentWeekStart, 
   onDateClick, 
   onPrevWeek, 
   onNextWeek,
   onBackToToday
-}: CalendarProps) {
+}) => {
   const settingsContext = useSettings();
-  const weekStart = getWeekStart(currentWeekStart, settingsContext?.settings?.startingDayOfWeek || 'MON');
+  const weekStart = getWeekStart(currentWeekStart, settingsContext?.settings?.starting_day_of_week || 'MON');
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
 
   // Day labels based on starting day of week setting
-  const dayLabels = settingsContext?.settings?.startingDayOfWeek === 'SUN'
+  const dayLabels = settingsContext?.settings?.starting_day_of_week === 'SUN'
     ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -105,7 +106,7 @@ export function Calendar({
                     {Math.abs(netAmount) % 1 === 0 ? Math.abs(netAmount) : Math.abs(netAmount).toFixed(0)}
                   </span>
                   <span className="hidden sm:inline">
-                    {settingsContext?.settings?.currencySymbol || '₵'}{Math.abs(netAmount) % 1 === 0 ? Math.abs(netAmount) : Math.abs(netAmount).toFixed(2)}
+                    {formatCurrency(Math.abs(netAmount), settingsContext?.settings?.currency)}
                   </span>
                   {dayData.transactionCount > 1 && (
                     <div className="text-xs opacity-75">
@@ -121,3 +122,5 @@ export function Calendar({
     </div>
   );
 }
+
+export default Calendar;

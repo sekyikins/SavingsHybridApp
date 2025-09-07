@@ -56,6 +56,9 @@ class BiometricsService {
   async checkBiometricCapabilities(): Promise<BiometricCapabilities> {
     try {
       if (!Capacitor.isNativePlatform()) {
+        logger.auth('Web platform detected, biometrics not available');
+        logger.debug('User agent:', { userAgent: navigator.userAgent });
+        logger.debug('Navigator platform:', { platform: navigator.platform });
         return {
           isAvailable: false,
           biometryType: BiometryType.NONE,
@@ -173,6 +176,13 @@ class BiometricsService {
         return false;
       }
 
+      // Ensure device is registered first
+      const deviceSession = await this.registerDevice(userId);
+      if (!deviceSession) {
+        logger.error('Failed to register device for biometrics');
+        return false;
+      }
+
       // Update device session
       const deviceId = await this.getDeviceId();
       const { error } = await supabase
@@ -241,6 +251,7 @@ class BiometricsService {
 
       if (settingsError) {
         logger.error('Failed to update user settings for biometrics', settingsError instanceof Error ? settingsError : new Error(String(settingsError)));
+        return false;
       }
 
       logger.auth('Biometrics disabled successfully');

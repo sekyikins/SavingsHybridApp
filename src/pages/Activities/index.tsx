@@ -34,10 +34,13 @@ import { format, isToday, isYesterday, parseISO, startOfDay, endOfDay, isValid }
 import useTransactions from '../../hooks/useTransactions';
 import { Transaction } from '../../config/supabase';
 import { logger } from '../../utils/debugLogger';
+import { useSettings } from '../../hooks/useSettings';
+import { formatCurrency } from '../../utils/currencyUtils';
 import './Activities.css';
 
 const Activities: React.FC = () => {
   const { transactions, refreshTransactions, isLoading } = useTransactions();
+  const { settings: userSettings } = useSettings();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
@@ -222,8 +225,8 @@ const Activities: React.FC = () => {
               color={filteredTransactions.reduce((sum, t) => 
                 t.transaction_type === 'deposit' ? sum + t.amount : sum - t.amount, 0) >= 0 ? 'success' : 'danger'}
             >
-              ${Math.abs(filteredTransactions.reduce((sum, t) => 
-                t.transaction_type === 'deposit' ? sum + t.amount : sum - t.amount, 0)).toFixed(2)}
+              {formatCurrency(filteredTransactions.reduce((sum, t) => 
+                t.transaction_type === 'deposit' ? sum + t.amount : sum - t.amount, 0), userSettings?.currency, { showSymbol: true })}
             </IonText>
           </div>
         </div>
@@ -258,7 +261,7 @@ const Activities: React.FC = () => {
                         {dayTransactions.length} transaction{dayTransactions.length !== 1 ? 's' : ''}
                       </IonText>
                       <IonText color={dayTotal >= 0 ? 'success' : 'danger'}>
-                        {dayTotal >= 0 ? '+' : ''}${dayTotal.toFixed(2)}
+                        {formatCurrency(dayTotal, userSettings?.currency, { showSymbol: true })}
                       </IonText>
                     </div>
                   </div>
@@ -299,7 +302,7 @@ const Activities: React.FC = () => {
                                   color={transaction.transaction_type === 'deposit' ? 'success' : 'danger'}
                                   className="amount-text"
                                 >
-                                  {transaction.transaction_type === 'deposit' ? '+' : '-'}${transaction.amount.toFixed(2)}
+                                  {transaction.transaction_type === 'deposit' ? '+' : '-'}{formatCurrency(transaction.amount, userSettings?.currency, { showSymbol: true })}
                                 </IonText>
                               </div>
                             </div>

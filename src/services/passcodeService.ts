@@ -1,5 +1,6 @@
 import { supabase, tables } from '../config/supabase';
 import { logger } from '../utils/debugLogger';
+import { databaseService } from '../services/databaseService'; // Import the databaseService
 
 export interface PasscodeVerificationResult {
   success: boolean;
@@ -55,19 +56,8 @@ class PasscodeService {
         };
       }
 
-      // Use database function to hash and store passcode
-      const { error } = await supabase.rpc('setup_user_passcode', {
-        p_user_id: userId,
-        p_passcode: passcode
-      });
-
-      if (error) {
-        logger.error('Failed to setup passcode', error instanceof Error ? error : new Error(String(error)));
-        return {
-          success: false,
-          error: 'Failed to setup passcode'
-        };
-      }
+      // Use databaseService to set passcode
+      await databaseService.setUserPasscode(userId, passcode);
 
       logger.auth('Passcode setup successfully', { userId });
       return { success: true };
@@ -90,29 +80,17 @@ class PasscodeService {
         };
       }
 
-      // Verify current passcode first
-      const verification = await this.verifyPasscode(userId, currentPasscode);
+      // Verify current passcode first using databaseService
+      const verification = await databaseService.verifyUserPasscode(userId, currentPasscode);
       if (!verification.success) {
         return {
           success: false,
-          error: verification.isLocked ? 'Account is locked due to too many failed attempts' : 'Current passcode is incorrect'
+          error: verification.error || 'Current passcode is incorrect'
         };
       }
 
-      // Use database function to change passcode
-      const { error } = await supabase.rpc('change_user_passcode', {
-        p_user_id: userId,
-        p_old_passcode: currentPasscode,
-        p_new_passcode: newPasscode
-      });
-
-      if (error) {
-        logger.error('Failed to change passcode', error instanceof Error ? error : new Error(String(error)));
-        return {
-          success: false,
-          error: 'Failed to change passcode'
-        };
-      }
+      // Set new passcode using databaseService
+      await databaseService.setUserPasscode(userId, newPasscode);
 
       logger.auth('Passcode changed successfully', { userId });
       return { success: true };
@@ -127,80 +105,16 @@ class PasscodeService {
 
   async verifyPasscode(userId: string, passcode: string): Promise<PasscodeVerificationResult> {
     try {
-      // Validate passcode format
-      if (!this.isValidPasscode(passcode)) {
-        return {
-          success: false,
-          error: 'Invalid passcode format'
-        };
-      }
-
-      // Check if account is locked
-      const { data: lockData, error: lockError } = await supabase.rpc('is_passcode_locked', {
-        p_user_id: userId
-      });
-
-      if (lockError) {
-        logger.error('Failed to check passcode lock status', lockError instanceof Error ? lockError : new Error(String(lockError)));
-        return {
-          success: false,
-          error: 'Failed to verify passcode'
-        };
-      }
-
-      if (lockData) {
-        return {
-          success: false,
-          isLocked: true,
-          lockoutTimeRemaining: 30 * 60, // 30 minutes in seconds
-          error: 'Account is locked due to too many failed attempts'
-        };
-      }
-
-      // Verify passcode using database function
-      const { data: verifyData, error: verifyError } = await supabase.rpc('verify_user_passcode', {
-        p_user_id: userId,
-        p_passcode: passcode
-      });
-
-      if (verifyError) {
-        logger.error('Failed to verify passcode', verifyError instanceof Error ? verifyError : new Error(String(verifyError)));
-        return {
-          success: false,
-          error: 'Failed to verify passcode'
-        };
-      }
-
-      if (verifyData) {
-        // Reset failed attempts on successful verification
-        await supabase.rpc('reset_passcode_attempts', {
-          p_user_id: userId
-        });
-
-        logger.auth('Passcode verified successfully', { userId });
+      // Use the databaseService method instead of direct RPC calls
+      const result = await databaseService.verifyUserPasscode(userId, passcode);
+      
+      if (result.success) {
         return { success: true };
       } else {
-        // Increment failed attempts
-        await supabase.rpc('increment_passcode_attempts', {
-          p_user_id: userId
-        });
-
-        // Get remaining attempts
-        const { data: attemptsData } = await supabase
-          .from(tables.user_passcodes)
-          .select('failed_attempts')
-          .eq('user_id', userId)
-          .single();
-
-        const failedAttempts = attemptsData?.failed_attempts || 0;
-        const attemptsRemaining = Math.max(0, 5 - failedAttempts);
-
-        logger.auth('Passcode verification failed', { userId, failedAttempts, attemptsRemaining });
-
         return {
           success: false,
-          attemptsRemaining,
-          error: 'Incorrect passcode'
+          isLocked: result.locked,
+          error: result.error
         };
       }
     } catch (error) {

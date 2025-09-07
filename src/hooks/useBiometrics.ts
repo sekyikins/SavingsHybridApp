@@ -210,7 +210,6 @@ export const useBiometrics = (): UseBiometricsReturn => {
     }
   }, [user?.id]);
 
-  // Check if biometrics is enabled for current user
   const checkBiometricStatus = useCallback(async () => {
     if (!user?.id) return;
 
@@ -232,11 +231,21 @@ export const useBiometrics = (): UseBiometricsReturn => {
   // Check capabilities and status when initialized
   useEffect(() => {
     if (isInitialized && user?.id) {
-      checkCapabilities();
-      checkBiometricStatus();
-      refreshDevices();
+      const initializeBiometrics = async () => {
+        await checkCapabilities();
+        await checkBiometricStatus();
+        await refreshDevices();
+        
+        // Register device if not already registered
+        const userDevices = await biometricsService.getUserDevices(user.id);
+        if (userDevices.length === 0) {
+          await registerDevice();
+        }
+      };
+      
+      initializeBiometrics();
     }
-  }, [isInitialized, user?.id, checkCapabilities, checkBiometricStatus, refreshDevices]);
+  }, [isInitialized, user?.id, checkCapabilities, checkBiometricStatus, refreshDevices, registerDevice]);
 
   return {
     // State

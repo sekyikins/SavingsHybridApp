@@ -86,15 +86,6 @@ const AuthPage: React.FC = () => {
     setShowAlert(true);
   };
 
-  const toggleAuthMode = () => {
-    setIsLogin(!isLogin);
-    setFormData({ email: '', password: '', firstName: '', lastName: '' });
-    setAlertMessage('');
-    setShowAlert(false);
-    setShowToast(false);
-    setErrors({});
-  };
-
   // Validate email format
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

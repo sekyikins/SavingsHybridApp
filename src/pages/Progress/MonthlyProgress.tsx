@@ -36,7 +36,6 @@ import {
   eachDayOfInterval, 
   isToday, 
   isSameMonth,
-  endOfDay,
 } from 'date-fns';
 import { Transaction } from '../../config/supabase';
 import './Progress.css';

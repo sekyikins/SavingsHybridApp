@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { 
   IonContent, 
   IonHeader, 
@@ -14,22 +14,27 @@ import {
   IonCardContent,
   IonSpinner,
   IonRefresher,
-  IonRefresherContent
+  IonRefresherContent,
+  IonText
 } from '@ionic/react';
 import { eyeOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import useTransactions from '../../hooks/useTransactions';
-import { useSettings } from '../../contexts/SettingsContext';
+import { useSettings } from '../../hooks/useSettings';
 import { dataIntegrationService } from '../../services/dataIntegrationService';
+import { databaseService } from '../../services/databaseService';
 import { logger } from '../../utils/debugLogger';
+import { formatCurrency } from '../../utils/currencyUtils';
+import type { UserProfile } from '../../config/supabase';
 import './Home.css';
 
 const Home: React.FC = () => {
   const history = useHistory();
   const { user, loading: authLoading } = useAuth();
   const { transactions, error, refreshTransactions, isLoading } = useTransactions();
-  const { savingsGoals } = useSettings();
+  const { settings: userSettings } = useSettings();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const now = new Date();
   
   useEffect(() => {
@@ -38,13 +43,25 @@ const Home: React.FC = () => {
       userId: user?.id,
       authLoading 
     });
-  }, [user, authLoading]);
-  
-  useEffect(() => {
     logger.componentMount('Home', { transactionCount: transactions.length });
     return () => logger.componentUnmount('Home');
-  }, []);
-  
+  }, [user, authLoading, transactions]);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user?.id) {
+        try {
+          const profile = await databaseService.getUserProfile(user.id);
+          setUserProfile(profile);
+        } catch (error) {
+          logger.error('Error fetching user profile for greeting', error instanceof Error ? error : new Error(String(error)));
+        }
+      }
+    };
+    
+    fetchUserProfile();
+  }, [user?.id]);
+
   useEffect(() => {
     if (error) {
       logger.error('Home page transaction error', error);
@@ -84,7 +101,7 @@ const Home: React.FC = () => {
     const weekStart = dataIntegrationService.getCurrentWeekStart(now);
     const stats = dataIntegrationService.getWeeklyStats(weekStart, transactions);
     
-    const weeklyGoal = savingsGoals?.weeklyGoal || 0; // Default to 0
+    const weeklyGoal = userSettings?.weekly_goal || 0; // Use weekly_goal from UserSettings
     const netTotal = stats.totalDeposits - stats.totalWithdrawals; // Net total (deposits - withdrawals)
     const progress = weeklyGoal > 0 && netTotal > 0 ? Math.min(netTotal / weeklyGoal, 1) : 0; // Progress based on net total, 0% if net is negative
     
@@ -103,7 +120,7 @@ const Home: React.FC = () => {
       deposits: stats.totalDeposits,
       withdrawals: stats.totalWithdrawals
     };
-  }, [transactions, now, savingsGoals?.weeklyGoal]);
+  }, [transactions, now, userSettings?.weekly_goal]);
 
   const handleRefresh = async (event: CustomEvent) => {
     logger.navigation('Pull-to-refresh triggered on Home page');
@@ -175,6 +192,15 @@ const Home: React.FC = () => {
           />
         </IonRefresher>
         <div className="dashboard-container">
+          {/* Greeting Text */}
+          <div className="greeting-container">
+            <IonText>
+              <h2 style={{ margin: '0', fontSize: '1.2rem', fontWeight: '600', color: 'var(--ion-color-medium)' }}>
+                👋Hello {userProfile?.username || userProfile?.full_name?.split(' ')[0] || 'there'}!
+              </h2>
+            </IonText>
+          </div>
+          
           {/* Monthly Progress Card */}
           <IonCard 
             className="savings-card" 
@@ -186,8 +212,8 @@ const Home: React.FC = () => {
             </IonCardHeader>
             <IonCardContent>
               <div className="amount-display">
-                <span className="current-amount">${monthlyStats.totalSaved.toFixed(2)}</span>
-                <span className="goal-amount"> / ${monthlyStats.monthlyGoal}</span>
+                <span className="current-amount">{formatCurrency(monthlyStats.totalSaved, userSettings?.currency)}</span>
+                <span className="goal-amount"> / {formatCurrency(monthlyStats.monthlyGoal, userSettings?.currency)}</span>
               </div>
               
               <IonProgressBar 
@@ -203,14 +229,14 @@ const Home: React.FC = () => {
                 <div className="stat-item">
                   <div className="stat-label">Daily Average</div>
                   <div className="stat-value">
-                    ${monthlyStats.dailyAverage.toFixed(2)}
+                    {formatCurrency(monthlyStats.dailyAverage, userSettings?.currency)}
                   </div>
                 </div>
                 
                 <div className="stat-item">
                   <div className="stat-label">Remaining</div>
                   <div className="stat-value">
-                    ${(monthlyStats.monthlyGoal - monthlyStats.totalSaved).toFixed(2)}
+                    {formatCurrency(monthlyStats.monthlyGoal - monthlyStats.totalSaved, userSettings?.currency)}
                   </div>
                 </div>
               </div>
@@ -228,8 +254,8 @@ const Home: React.FC = () => {
             </IonCardHeader>
             <IonCardContent>
               <div className="amount-display">
-                <span className="current-amount">${weeklyStats.totalSaved.toFixed(2)}</span>
-                <span className="goal-amount"> / ${weeklyStats.weeklyGoal}</span>
+                <span className="current-amount">{formatCurrency(weeklyStats.totalSaved, userSettings?.currency)}</span>
+                <span className="goal-amount"> / {formatCurrency(weeklyStats.weeklyGoal, userSettings?.currency)}</span>
               </div>
               
               <IonProgressBar 
@@ -252,7 +278,7 @@ const Home: React.FC = () => {
                 <div className="stat-item">
                   <div className="stat-label">Remaining</div>
                   <div className="stat-value">
-                    ${(weeklyStats.weeklyGoal - weeklyStats.totalSaved).toFixed(2)}
+                    {formatCurrency(weeklyStats.weeklyGoal - weeklyStats.totalSaved, userSettings?.currency)}
                   </div>
                 </div>
               </div>
