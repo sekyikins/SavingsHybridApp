@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Savings App</string>
+    <string name="title_activity_main">Savings App</string>
+    <string name="package_name">com.savings.app</string>
+    <string name="custom_url_scheme">com.savings.app</string>
+</resources>

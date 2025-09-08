@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, ErrorInfo, Component } from 'react';
 import { IonApp, setupIonicReact, isPlatform, IonTabs, IonRouterOutlet, IonTabBar, IonTabButton, IonIcon, IonLabel, IonPage, IonContent, IonSpinner } from '@ionic/react';
 import { Route, Redirect, useLocation } from 'react-router-dom';
 import { StatusBar } from '@capacitor/status-bar';
@@ -47,18 +47,80 @@ import BugReport from './pages/HelpAndSupport/BugReport';
 import Feedback from './pages/HelpAndSupport/Feedback';
 import EmergencySupport from './pages/HelpAndSupport/EmergencySupport';
 
-// Initialize Ionic
-setupIonicReact({
-  mode: 'md',
-  rippleEffect: true,
-  _forceStatusbarPadding: true,
-});
+// Error Boundary Component
+class ErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('App Error Boundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <IonApp>
+          <IonPage>
+            <IonContent className="ion-padding">
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                height: '100%', 
+                flexDirection: 'column', 
+                gap: '16px',
+                textAlign: 'center'
+              }}>
+                <h2>Something went wrong</h2>
+                <p>Please restart the app</p>
+                <button onClick={() => window.location.reload()}>
+                  Reload App
+                </button>
+              </div>
+            </IonContent>
+          </IonPage>
+        </IonApp>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Initialize Ionic with safer settings
+try {
+  setupIonicReact({
+    mode: 'md',
+    rippleEffect: true,
+    _forceStatusbarPadding: isPlatform('capacitor'),
+  });
+} catch (e) {
+  console.warn('Ionic setup failed:', e);
+}
 
 // For status bar styling, use the StatusBar API (only on mobile)
-if (isPlatform('capacitor')) {
-  StatusBar.setStyle({ style: 'DARK' }).catch(e => console.warn('StatusBar setStyle failed:', e));
-  StatusBar.setBackgroundColor({ color: '#00000000' }).catch(e => console.warn('StatusBar setBackgroundColor failed:', e));
-}
+const initializeStatusBar = async () => {
+  if (isPlatform('capacitor')) {
+    try {
+      await StatusBar.setStyle({ style: 'DARK' });
+      await StatusBar.setBackgroundColor({ color: '#00000000' });
+    } catch (e) {
+      console.warn('StatusBar initialization failed:', e);
+    }
+  }
+};
+
+// Initialize status bar safely
+initializeStatusBar();
 
 // Protected Route component
 interface ProtectedRouteProps {
@@ -188,9 +250,9 @@ const AppRoutes: React.FC = () => {
 
 const App: React.FC = () => {
   useEffect(() => {
-    // Set up status bar
+    // Set up status bar with better error handling
     const setupStatusBar = async () => {
-      if (isPlatform('hybrid')) {
+      if (isPlatform('capacitor')) {
         try {
           await StatusBar.setStyle({ 
             style: 'DARK'
@@ -198,13 +260,24 @@ const App: React.FC = () => {
           await StatusBar.setBackgroundColor({ 
             color: '#1a1a1a'
           });
-          await SplashScreen.hide();
         } catch (e) {
-          // Silently ignore StatusBar/SplashScreen errors
+          console.warn('StatusBar setup failed:', e);
         }
-      } else {
-        // Hide splash screen on web after a delay
-        setTimeout(() => SplashScreen.hide().catch(() => {}), 100);
+      }
+      
+      // Hide splash screen with delay and error handling
+      try {
+        if (isPlatform('capacitor')) {
+          setTimeout(async () => {
+            try {
+              await SplashScreen.hide();
+            } catch (e) {
+              console.warn('SplashScreen hide failed:', e);
+            }
+          }, 500);
+        }
+      } catch (e) {
+        console.warn('SplashScreen initialization failed:', e);
       }
     };
     
@@ -214,7 +287,9 @@ const App: React.FC = () => {
   return (
     <IonApp>
       <IonReactRouter>
-        <AppRoutes />
+        <ErrorBoundary>
+          <AppRoutes />
+        </ErrorBoundary>
       </IonReactRouter>
     </IonApp>
   );
